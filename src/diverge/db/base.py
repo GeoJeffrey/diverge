@@ -22,6 +22,13 @@ if not DATABASE_URL:
     DEFAULT_SQLITE_PATH.parent.mkdir(parents=True, exist_ok=True)
     DATABASE_URL = f"sqlite:///{DEFAULT_SQLITE_PATH.as_posix()}"
 
+# Normalise PostgreSQL URLs to explicitly use the psycopg2 driver.
+# Railway (and many PaaS providers) supply a plain ``postgresql://`` URL which
+# SQLAlchemy 2.0+ maps to the psycopg **3** dialect by default. Since we ship
+# psycopg2-binary, force the ``+psycopg2`` suffix so the correct driver is used.
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
+
 connect_args = {}
 if DATABASE_URL.startswith("sqlite"):
     connect_args["check_same_thread"] = False
