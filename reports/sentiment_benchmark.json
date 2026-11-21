@@ -1,0 +1,88 @@
+{
+  "generated_at": "2026-11-21T16:58:49+00:00",
+  "environment": {
+    "python": "3.11.9",
+    "machine": "AMD64",
+    "os": "Windows",
+    "torch": "2.14.1+cu126",
+    "cuda_device": "NVIDIA GeForce RTX 3060 Laptop GPU"
+  },
+  "dataset": "zeroshot/twitter-financial-news-sentiment",
+  "train_size": 9543,
+  "test_size": 2388,
+  "test_label_distribution": {
+    "bearish": 347,
+    "bullish": 475,
+    "neutral": 1566
+  },
+  "models": [
+    {
+      "model": "Keyword lexicon (baseline)",
+      "accuracy": 0.6755,
+      "macro_f1": 0.4375,
+      "f1_per_class": {
+        "bearish": 0.1932,
+        "bullish": 0.3223,
+        "neutral": 0.7968
+      },
+      "texts_per_sec": 78284.0
+    },
+    {
+      "model": "TF-IDF + logistic regression",
+      "accuracy": 0.8271,
+      "macro_f1": 0.7712,
+      "f1_per_class": {
+        "bearish": 0.6891,
+        "bullish": 0.7369,
+        "neutral": 0.8875
+      },
+      "texts_per_sec": 60006.3
+    },
+    {
+      "model": "FinBERT zero-shot (ProsusAI/finbert)",
+      "accuracy": 0.7253,
+      "macro_f1": 0.6682,
+      "f1_per_class": {
+        "bearish": 0.5986,
+        "bullish": 0.6043,
+        "neutral": 0.8016
+      },
+      "texts_per_sec": 1306.7
+    },
+    {
+      "model": "FinBERT fine-tuned on finance tweets",
+      "accuracy": 0.879,
+      "macro_f1": 0.8451,
+      "f1_per_class": {
+        "bearish": 0.7989,
+        "bullish": 0.8204,
+        "neutral": 0.9159
+      },
+      "texts_per_sec": 1426.6
+    }
+  ],
+  "finetuned_confusion_matrix": {
+    "labels": [
+      "bearish",
+      "bullish",
+      "neutral"
+    ],
+    "matrix": [
+      [
+        288,
+        12,
+        47
+      ],
+      [
+        17,
+        395,
+        63
+      ],
+      [
+        69,
+        81,
+        1416
+      ]
+    ]
+  }
+}

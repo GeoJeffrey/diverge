@@ -1,14 +1,16 @@
 {
-  "generated_at": "2026-11-21T06:18:17+00:00",
+  "generated_at": "2026-11-21T16:55:21+00:00",
   "environment": {
-    "python": "3.13.18",
-    "machine": "x86_64",
-    "os": "Linux"
+    "python": "3.11.9",
+    "machine": "AMD64",
+    "os": "Windows",
+    "torch": "2.14.1+cu126",
+    "cuda_device": "NVIDIA GeForce RTX 3060 Laptop GPU"
   },
   "windows": 4000,
   "posts": 490514,
   "positive_rate": 0.494,
-  "feature_extraction_posts_per_sec": 7241.3,
+  "feature_extraction_posts_per_sec": 8599.5,
   "heuristic_as_deployed": {
     "roc_auc": 0.6567,
     "pr_auc": 0.7116,
@@ -85,23 +87,23 @@
   "lsh_scaling": [
     {
       "posts": 1000,
-      "exact_seconds": 1.136,
-      "lsh_seconds": 0.061,
-      "speedup": 18.74,
+      "exact_seconds": 0.857,
+      "lsh_seconds": 0.06,
+      "speedup": 14.21,
       "pair_recall": 1.0
     },
     {
       "posts": 2000,
-      "exact_seconds": 4.915,
-      "lsh_seconds": 0.208,
-      "speedup": 23.62,
+      "exact_seconds": 3.811,
+      "lsh_seconds": 0.128,
+      "speedup": 29.8,
       "pair_recall": 1.0
     },
     {
       "posts": 4000,
-      "exact_seconds": 20.478,
-      "lsh_seconds": 0.49,
-      "speedup": 41.8,
+      "exact_seconds": 15.715,
+      "lsh_seconds": 0.39,
+      "speedup": 40.26,
       "pair_recall": 1.0
     }
   ]

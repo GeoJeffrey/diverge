@@ -1,0 +1,195 @@
+{
+  "generated_at": "2026-11-21T17:24:01+00:00",
+  "environment": {
+    "python": "3.11.9",
+    "machine": "AMD64",
+    "os": "Windows",
+    "torch": "2.14.1+cu126",
+    "cuda_device": "NVIDIA GeForce RTX 3060 Laptop GPU"
+  },
+  "source": "mjw/stock_market_tweets",
+  "sentiment_model": "auto",
+  "panel": {
+    "tickers": [
+      "AAPL",
+      "AMZN",
+      "GOOG",
+      "MSFT",
+      "TSLA"
+    ],
+    "ticker_days": 6320,
+    "first_day": "2014-12-31",
+    "last_day": "2020-01-08",
+    "posts": 1700641
+  },
+  "narrative_features": [
+    "log_volume",
+    "volume_z",
+    "mean_sentiment",
+    "bull_share",
+    "sentiment_z",
+    "disagreement",
+    "new_author_share",
+    "rn",
+    "capitulation_share",
+    "duplicate_share",
+    "engagement",
+    "divergence"
+  ],
+  "volatility": {
+    "linear": {
+      "oos_r2_price_only": 0.1248,
+      "oos_r2_with_narrative": 0.1724,
+      "mse_reduction_pct": 5.44,
+      "rank_ic_price_only": 0.3361,
+      "rank_ic_with_narrative": 0.3297,
+      "diebold_mariano_stat": 3.279,
+      "dm_p_value": 0.0005,
+      "test_observations": 5055,
+      "test_years": [
+        2016,
+        2017,
+        2018,
+        2019,
+        2020
+      ]
+    },
+    "gbm": {
+      "oos_r2_price_only": 0.1129,
+      "oos_r2_with_narrative": 0.1452,
+      "mse_reduction_pct": 3.64,
+      "rank_ic_price_only": 0.3239,
+      "rank_ic_with_narrative": 0.309,
+      "diebold_mariano_stat": 2.444,
+      "dm_p_value": 0.0073,
+      "test_observations": 5055,
+      "test_years": [
+        2016,
+        2017,
+        2018,
+        2019,
+        2020
+      ]
+    }
+  },
+  "volatility_5d": {
+    "linear": {
+      "oos_r2_price_only": 0.2987,
+      "oos_r2_with_narrative": 0.3039,
+      "mse_reduction_pct": 0.74,
+      "rank_ic_price_only": 0.5763,
+      "rank_ic_with_narrative": 0.5754,
+      "diebold_mariano_stat": 0.672,
+      "dm_p_value": 0.2508,
+      "test_observations": 5035,
+      "test_years": [
+        2016,
+        2017,
+        2018,
+        2019,
+        2020
+      ]
+    },
+    "gbm": {
+      "oos_r2_price_only": 0.2622,
+      "oos_r2_with_narrative": 0.2507,
+      "mse_reduction_pct": -1.55,
+      "rank_ic_price_only": 0.5399,
+      "rank_ic_with_narrative": 0.5438,
+      "diebold_mariano_stat": -1.531,
+      "dm_p_value": 0.9371,
+      "test_observations": 5035,
+      "test_years": [
+        2016,
+        2017,
+        2018,
+        2019,
+        2020
+      ]
+    }
+  },
+  "big_move_alerts": {
+    "definition": "next-day |return| > 2x trailing 22-day mean |return|",
+    "alert_share": 0.1,
+    "price_only": {
+      "roc_auc": 0.6129,
+      "pr_auc": 0.184,
+      "base_rate": 0.1316,
+      "alert_precision": 0.2339,
+      "lift": 1.78,
+      "recall_of_big_moves": 0.1805,
+      "test_observations": 5055
+    },
+    "with_narrative": {
+      "roc_auc": 0.645,
+      "pr_auc": 0.2379,
+      "base_rate": 0.1316,
+      "alert_precision": 0.2978,
+      "lift": 2.26,
+      "recall_of_big_moves": 0.2271,
+      "test_observations": 5055
+    },
+    "attention_spike_rule": {
+      "alert_precision": 0.2598,
+      "base_rate": 0.1334,
+      "lift": 1.95
+    }
+  },
+  "direction": {
+    "linear": {
+      "price_only": {
+        "auc": 0.508,
+        "accuracy": 0.5132,
+        "long_short_sharpe_after_costs": 0.307
+      },
+      "with_narrative": {
+        "auc": 0.5162,
+        "accuracy": 0.5064,
+        "long_short_sharpe_after_costs": -0.819
+      }
+    },
+    "gbm": {
+      "price_only": {
+        "auc": 0.5024,
+        "accuracy": 0.4983,
+        "long_short_sharpe_after_costs": -1.121
+      },
+      "with_narrative": {
+        "auc": 0.5231,
+        "accuracy": 0.5205,
+        "long_short_sharpe_after_costs": -0.392
+      }
+    }
+  },
+  "attention_shock_event_study": {
+    "shock_days": 635,
+    "other_days": 5685,
+    "mean_next_day_abs_return_shock_pct": 1.941,
+    "mean_next_day_abs_return_other_pct": 1.192,
+    "volatility_ratio": 1.628,
+    "ratio_95ci": [
+      1.465,
+      1.802
+    ]
+  },
+  "permutation_importance_pct_mse": {
+    "abs_ret_22": 27.355,
+    "abs_ret_5": 3.52,
+    "mkt_abs_ret": 0.029,
+    "log_volume": 0.0,
+    "volume_z": 0.0,
+    "mean_sentiment": 0.0,
+    "bull_share": 0.0,
+    "sentiment_z": 0.0,
+    "disagreement": 0.0,
+    "new_author_share": 0.0,
+    "capitulation_share": 0.0,
+    "duplicate_share": 0.0,
+    "engagement": 0.0,
+    "divergence": 0.0,
+    "ret_5": -0.001,
+    "rn": -0.792,
+    "ret": -3.014,
+    "abs_ret": -3.551
+  }
+}
