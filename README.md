@@ -214,7 +214,7 @@ The contract is frozen in [`docs/openapi.json`](docs/openapi.json); `scripts/dif
 ## Tests
 
 ```bash
-pytest -q     # 108 tests: index maths, Rn recovery, LSH vs brute force, backtest leakage checks, outlook train/serve parity, API
+pytest -q     # 110 tests: index maths, Rn recovery, LSH vs brute force, backtest leakage checks, outlook train/serve parity, API
 
 cd frontend
 npm run lint && npm run typecheck
