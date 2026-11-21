@@ -107,7 +107,7 @@ Full methodology, evaluation design and limitations: **[docs/architecture.md](do
 
 ## Tech stack
 
-Python · PyTorch · Hugging Face Transformers · scikit-learn · statsmodels · pandas · FastAPI · SQLAlchemy · Alembic · PostgreSQL · JWT/bcrypt · APScheduler · React 19 · TypeScript · Vite · Tailwind · Recharts · Docker · GitHub Actions · Railway · Vercel
+Python · PyTorch · Hugging Face Transformers · scikit-learn · statsmodels · pandas · FastAPI · SQLAlchemy · Alembic · PostgreSQL · JWT/bcrypt · APScheduler · React 19 · TypeScript · Vite · Tailwind · Recharts · Docker · GitHub Actions · Neon · Render · Vercel
 
 ## Quick start
 
@@ -122,6 +122,12 @@ cd frontend && npm install && npm run dev               # dashboard on http://lo
 ```
 
 Or run everything in containers: `docker compose up --build`. Without `DATABASE_URL`, the app uses a local SQLite file.
+
+## Deployment ($0)
+
+Frontend on **Vercel** → API on a **Render** free web service (slim Docker image, no PyTorch) → **Neon** Postgres ←
+pipeline worker as a **GitHub Actions** scheduled workflow every 4 hours. The free API sleeps when idle, so the
+first request can take ~30-60 s. Step-by-step setup: **[DEPLOY.md](DEPLOY.md)**.
 
 ## Reproduce the evaluation
 
