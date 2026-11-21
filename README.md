@@ -73,7 +73,7 @@ Social signals help the **next-day** volatility forecast significantly; at the *
 
 Direction accuracy is **at chance and below the always-up baseline**: the outlook's direction call is not a predictive edge, which is why its track record is shown next to every call. Its useful part is the expected move size.
 
-The tweet dataset ends on 2019-12-31, so the 2020 test days (2-8 January) have no social data. Real-world validation of the bot detector on blind hand-labelled windows is **pending** until the deployed worker has collected enough posts.
+The tweet dataset ends on 2019-12-31, so the 2020 test days (2-8 January) have no social data. A first blind real-world check of the bot detector labelled 2 real 2-hour windows (2 more marked unsure and excluded). The model flagged none of them, so its real-world precision and false-alarm rate **can't be measured yet** (`n/a` in [reports/RESULTS.md](reports/RESULTS.md)). The check is repeated as the deployed worker collects more posts.
 
 ---
 
