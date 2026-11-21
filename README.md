@@ -5,7 +5,7 @@
 
 **Diverge reads public sentiment about a stock and estimates what happens next: whether it is more likely to close up or down tomorrow, and whether to expect a bigger move than usual. Every estimate comes with the reasons behind it and the model's measured track record.**
 
-It collects posts from Reddit, StockTwits, Telegram, financial news RSS and Google Trends. It scores them with a FinBERT model fine-tuned on finance tweets. It then turns them into daily signals: sentiment shifts, attention spikes, bull/bear disagreement, and an epidemiological *reproduction number* for how fast a story is recruiting new posters. An integrity layer flags bot-like coordinated campaigns and pulls the estimate toward 50/50 when the conversation looks inorganic. Everything is served through a JWT-secured FastAPI backend and a React dashboard. Every model is checked by a reproducible, walk-forward evaluation suite.
+It collects posts from Reddit, StockTwits, Telegram, financial news RSS and Google Trends. It scores them with a FinBERT model fine-tuned on finance tweets. It then turns them into daily signals: sentiment shifts, attention spikes, bull/bear disagreement, and an epidemiological *reproduction number* for how fast a story is recruiting new posters. An integrity layer flags bot-like coordinated campaigns and pulls the estimate toward 50/50 when the conversation looks inorganic. Everything is served through a JWT-secured FastAPI backend and a React web app. Every model is checked by a reproducible, walk-forward evaluation suite.
 
 > **Honest framing.** Next-day *direction* is close to a coin flip for liquid stocks, and Diverge shows exactly how close next to every call. Social attention is much better at predicting *how much* a stock will move, and that is where most of the signal is.
 
@@ -61,7 +61,7 @@ Social signals help the **next-day** volatility forecast significantly; at the *
 
 **Direction**: next-day excess-return direction AUC is 0.516 (linear) / 0.523 (gbm) with social features, i.e. close to a coin flip, as expected for liquid large caps.
 
-**Next-day outlook track record** (walk-forward test 2016-01-04 to 2020-01-08, 5,055 ticker-days; shown in the dashboard's *Model accuracy* page):
+**Next-day outlook track record** (walk-forward test 2016-01-04 to 2020-01-08, 5,055 ticker-days; shown on the web app's *Model accuracy* page):
 
 | Metric | Value |
 |---|---|
@@ -88,7 +88,7 @@ flowchart LR
     C & D & E --> O[Next-day outlook<br/>P up · expected move · drivers]
     D & E --> F[Narrative intensity<br/>+ explainability traces]
     O & F --> P[publish] --> G[FastAPI + JWT<br/>PostgreSQL]
-    G --> H[React dashboard]
+    G --> H[React web app]
 ```
 
 | Signal | What it measures | How |
@@ -105,9 +105,34 @@ Every index returns a real value or `null` with a coverage note. No placeholder 
 
 Full methodology, evaluation design and limitations: **[docs/architecture.md](docs/architecture.md)**.
 
+## The web app
+
+![Landing page: a live next-day outlook drawn as a fork](docs/screenshots/landing.png)
+
+The UI is built around one chart, **the fork**: today's line splits into an up and a down branch. Branch thickness is
+the chance of each direction (a 53/47 call looks almost symmetric, which is the honest picture), the spread of the fork
+is the expected move, and a dashed fork behind it shows the stock's typical move. There is no price axis, because it is
+a probability picture, not a price forecast.
+
+| | |
+|---|---|
+| ![Ticker page](docs/screenshots/ticker.png) | ![Market overview](docs/screenshots/market.png) |
+| **Ticker page**: the outlook, its drivers, coordination risk and its track record | **Market**: all tracked names by exchange, sortable and filterable |
+
+![Model accuracy page](docs/screenshots/accuracy.png)
+
+- **Honesty is part of the design.** Every call states how close it is to a coin flip, shows the API's disclaimer and
+  links to the track record. "Not enough data" is a designed, hatched state rather than a blank or a placeholder value.
+  Every number on screen comes from the API.
+- **Demo mode.** Without `VITE_API_BASE_URL` the app runs on built-in demo data and says so on every page; the accuracy
+  page then shows the committed model's real test results.
+- **Built for everyone.** WCAG 2.1 AA in both themes (checked with axe on every route), full keyboard navigation,
+  reduced-motion support, and layouts designed for phones as well as desktops.
+- **Free-tier aware.** If the sleeping Render API takes more than 4 seconds to answer, the page says it is waking up.
+
 ## Tech stack
 
-Python · PyTorch · Hugging Face Transformers · scikit-learn · statsmodels · pandas · FastAPI · SQLAlchemy · Alembic · PostgreSQL · JWT/bcrypt · APScheduler · React 19 · TypeScript · Vite · Tailwind · Recharts · Docker · GitHub Actions · Neon · Render · Vercel
+Python · PyTorch · Hugging Face Transformers · scikit-learn · statsmodels · pandas · FastAPI · SQLAlchemy · Alembic · PostgreSQL · JWT/bcrypt · APScheduler · React 19 · TypeScript · Vite · Tailwind · TanStack Query · hand-built SVG charts · Vitest · Playwright · Docker · GitHub Actions · Neon · Render · Vercel
 
 ## Quick start
 
@@ -118,7 +143,7 @@ pip install -r requirements.txt && pip install -e .
 
 python run_all.py                 # scrape → features → indices → integrity → composite → outlook
 python run_server.py --port 8000  # API on http://localhost:8000/docs
-cd frontend && npm install && npm run dev               # dashboard on http://localhost:5173
+cd frontend && npm install && npm run dev               # web app on http://localhost:5173
 ```
 
 Or run everything in containers: `docker compose up --build`. Without `DATABASE_URL`, the app uses a local SQLite file.
@@ -177,10 +202,16 @@ The contract is frozen in [`docs/openapi.json`](docs/openapi.json); `scripts/dif
 ## Tests
 
 ```bash
-pytest -q     # 91 tests: index maths, Rn recovery, LSH vs brute force, backtest leakage checks, outlook train/serve parity, API
+pytest -q     # 99 tests: index maths, Rn recovery, LSH vs brute force, backtest leakage checks, outlook train/serve parity, API
+
+cd frontend
+npm run lint && npm run typecheck
+npm test               # 37 unit tests: formatting, wording rules, charts, data states, API contract vs docs/openapi.json
+npm run test:e2e       # 54 Playwright tests in demo mode: every route, both themes, 375 and 1280 px, axe WCAG 2.1 AA
 ```
 
-CI runs a secret scan, the test suite, an offline benchmark smoke test and the frontend build on every push.
+CI runs a secret scan, the backend tests, an offline benchmark smoke test, and the frontend lint, typecheck, unit tests
+and build on every push.
 
 ## Project layout
 
@@ -197,7 +228,11 @@ src/diverge/
   pipeline.py      one end-to-end pipeline for the CLI and the scheduled worker
   publish.py       pushes results from the worker's store to the API's database
   api/ db/ auth/   FastAPI app, SQLAlchemy models, JWT
-frontend/          React + Vite dashboard
+frontend/          React + Vite web app
+  src/design-system/  tokens, type, components, the fork and other SVG charts
+  src/features/       landing, market, ticker (simple/advanced/why/integrity), accuracy, method, auth
+  src/lib/            API client, queries, formatting, theme
+  e2e/                Playwright smoke + accessibility tests
 reports/           generated results (RESULTS.md + JSON)
 ```
 
