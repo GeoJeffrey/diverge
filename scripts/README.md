@@ -1,48 +1,14 @@
-# Diverge — Developer & Diagnostic Scripts
+# Scripts
 
-This directory contains utility scripts for database maintenance, migration, diagnostics, and test runs.
+| Script | Purpose |
+|---|---|
+| `bench_api.py` | Load-test a running API; writes p50/p95/p99 latency and throughput to `reports/api_latency.json`. |
+| `smoke_test_api.py` | End-to-end check of every endpoint, including 401 protection on authenticated routes. |
+| `validate_endpoints.py` | Validate live responses against the OpenAPI contract. |
+| `diff_openapi.py` | Detect drift between the live schema and `docs/openapi.json`. |
+| `verify_data_distribution.py` | Per-ticker / per-platform distribution of collected posts and computed indices. |
+| `daily_volume_report.py` | Daily post volume per platform (scraper health). |
+| `migrate_sqlite_to_pg.py` | One-time migration of the local SQLite store into PostgreSQL. |
+| `sync_sqlite_to_postgres.py` | Copy computed tables into a PostgreSQL instance given by `DATABASE_URL` (never hard-coded). |
 
-## 🛠️ Diagnostics & Testing
-
-- **`smoke_test_api.py`**  
-  Comprehensive end-to-end smoke test validating all 7 core API endpoints (`/health`, `/tickers`, `/ticker/{symbol}/simple`, `/auth/signup`, `/auth/login`, `/auth/me`, `/ticker/{symbol}`, `/ticker/{symbol}/reasoning`) and checking 401 unauthorized protection.
-  ```bash
-  python scripts/smoke_test_api.py
-  ```
-
-- **`test_concurrency.py`**  
-  Spawns 20 concurrent worker requests against PostgreSQL through the FastAPI server to verify connection pooling and lack of database lock contention.
-  ```bash
-  python scripts/test_concurrency.py
-  ```
-
-- **`verify_pg_conn.py`**  
-  Verifies connection to PostgreSQL, checks PostgreSQL version, and ensures the target `diverge` database exists.
-  ```bash
-  python scripts/verify_pg_conn.py
-  ```
-
-- **`validate_endpoints.py`**  
-  Validates API responses against OpenAPI contracts.
-
-- **`inspect_multi_tickers.py`**  
-  Inspects dynamic calculation of financial indices across representative equities (`RELIANCE`, `WIPRO`, `LT`, etc.).
-
-- **`diff_openapi.py`**  
-  Compares live runtime OpenAPI schema with `docs/openapi.json` to guarantee zero drift.
-
----
-
-## 🗄️ Database Operations
-
-- **`migrate_sqlite_to_pg.py`**  
-  Migrates legacy SQLite tables (`raw_posts`, `text_features`, `index_values`, etc.) into PostgreSQL.
-  ```bash
-  python scripts/migrate_sqlite_to_pg.py
-  ```
-
-- **`purge_seeded_data.py`**  
-  Cleans out synthetic test accounts and resets state while preserving scraped market data.
-
-- **`inspect_table_counts.py` / `check_sqlite_counts.py`**  
-  Prints record counts across all pipeline tables.
+All scripts are run from the repository root, e.g. `python scripts/bench_api.py --requests 2000 --concurrency 32`.

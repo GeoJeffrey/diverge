@@ -15,6 +15,7 @@ Prints summary report of window trust classification per ticker.
 """
 
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -27,9 +28,27 @@ from diverge.integrity import coordination_score
 logger = utils.setup_logger("run_phase4")
 
 
-def run(db_path: Path = config.DB_PATH) -> int:
+def _pending_windows(pstats: List[Dict[str, Any]], db_path: Path) -> List[Dict[str, Any]]:
+    """Windows not scored yet, plus each ticker's most recent 2 hours (late posts may have arrived)."""
+    conn = storage.get_connection(db_path)
+    done = set(conn.execute("SELECT ticker, window_start_utc FROM coordination_scores").fetchall())
+    conn.close()
+    latest: Dict[str, str] = {}
+    for p in pstats:
+        latest[p["ticker"]] = max(latest.get(p["ticker"], ""), p.get("window_start_utc") or "")
+    recent_cut = {
+        t: (datetime.fromisoformat(w) - timedelta(hours=2)).isoformat() if w else ""
+        for t, w in latest.items()
+    }
+    return [p for p in pstats
+            if (p["ticker"], p.get("window_start_utc")) not in done
+            or (p.get("window_start_utc") or "") >= recent_cut[p["ticker"]]]
+
+
+def run(db_path: Path = config.DB_PATH, full: bool = False) -> int:
     """
-    Run Phase 4 coordination scoring for all tickers and windows.
+    Run Phase 4 coordination scoring. Incremental by default: only windows that have not been
+    scored yet (plus the latest 2 hours per ticker). full=True rescores everything.
     Returns count of updated coordination_scores rows.
     """
     logger.info("=" * 60)
@@ -41,6 +60,11 @@ def run(db_path: Path = config.DB_PATH) -> int:
         logger.info("No periodicity_stats rows found. Computing coordination scores across tickers...")
         tickers = list(config.TICKERS.keys())
         pstats = [{"ticker": t, "window_start_utc": "", "window_end_utc": ""} for t in tickers]
+
+    elif not full:
+        before = len(pstats)
+        pstats = _pending_windows(pstats, db_path)
+        logger.info(f"Incremental run: scoring {len(pstats)} of {before} windows.")
 
     score_rows: List[Dict[str, Any]] = []
 

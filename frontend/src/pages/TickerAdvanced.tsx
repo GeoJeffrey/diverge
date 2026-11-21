@@ -7,6 +7,8 @@ import { TrustBadge, VerdictBadge } from "@/components/TrustBadge";
 import { ErrorState, LoadingState } from "@/components/StatusStates";
 import type { IndexKey, TickerAdvancedResponse, TickerSimpleResponse } from "@/types/api";
 import type { ShellContext } from "@/pages/Layout";
+import { OutlookCard } from "@/components/OutlookCard";
+import { useOutlook } from "@/lib/useOutlook";
 
 const INDEX_ORDER: IndexKey[] = ["rn", "cirg", "cli", "cassi", "vdi"];
 
@@ -18,6 +20,7 @@ export default function TickerAdvanced() {
   const [simple, setSimple] = useState<TickerSimpleResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const { outlook, model } = useOutlook(symbol);
 
   async function load() {
     setLoading(true);
@@ -62,9 +65,15 @@ export default function TickerAdvanced() {
         </div>
       </div>
 
+      {outlook && (
+        <div className="mb-5">
+          <OutlookCard outlook={outlook} model={model} />
+        </div>
+      )}
+
       <div className="mb-5 grid gap-4 md:grid-cols-3">
         <article className="rounded-xl border border-[#e7e1d8] bg-white p-5">
-          <p className="text-sm text-[#6b6b6b]">Composite</p>
+          <p className="text-sm text-[#6b6b6b]">Narrative intensity</p>
           <p className="mt-1 text-3xl font-bold tabular-nums">
             {detail.composite_score === null ? "—" : detail.composite_score.toFixed(1)}
           </p>
@@ -75,7 +84,7 @@ export default function TickerAdvanced() {
           <p className="mt-1 text-xl font-bold">{labelForIndexKey(detail.dominant_index)}</p>
         </article>
         <article className="rounded-xl bg-[#eef0f6] p-5">
-          <p className="text-sm text-[#3d4a66]">Trust Score</p>
+          <p className="text-sm text-[#3d4a66]">Coordination risk</p>
           {coord.available ? (
             <>
               <p className="mt-1 text-3xl font-bold tabular-nums text-[#3d4a66]">{coord.coordination_score.toFixed(1)}</p>
@@ -83,7 +92,7 @@ export default function TickerAdvanced() {
                 <TrustBadge flag={coord.confidence_flag} />
               </div>
               <p className="mt-2 text-xs leading-relaxed text-[#4a5568]">
-                Higher values mean the conversation looks more coordinated. This is not a bullish/bearish scale.
+                Estimated probability (0-100) that the conversation contains a coordinated campaign. Not a bullish/bearish scale.
               </p>
             </>
           ) : (
@@ -134,7 +143,7 @@ export default function TickerAdvanced() {
                 <p className="text-sm tabular-nums text-[#555]">
                   {item.composite_delta === null
                     ? "No composite change"
-                    : `${item.composite_delta > 0 ? "+" : ""}${item.composite_delta.toFixed(1)} composite`}
+                    : `${item.composite_delta > 0 ? "+" : ""}${item.composite_delta.toFixed(1)} intensity`}
                 </p>
               </li>
             ))}

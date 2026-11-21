@@ -1,89 +1,64 @@
 """
 duplicate_detection.py
 
-Phase 4 & 6: Near-duplicate post detection using MinHash signatures (via datasketch).
+Near-duplicate post detection for the integrity layer.
 For each (ticker, window):
-  - Computes MinHash signature for each post's raw_text.
-  - Compares pairwise; flags posts with >90% similarity (Jaccard > 0.90) to at least one other post
-    from a DIFFERENT account (account_id_1 != account_id_2).
-  - duplicate_ratio = (near_duplicate_posts_count) / (total_posts_in_window).
-  - Phase 6 Extension: Also records duplicate pairs in duplicate_pairs table for lineage tracing.
+  - Finds post pairs whose word-bigram Jaccard similarity >= threshold, using MinHash + LSH
+    candidate generation (see minhash_lsh.py) followed by exact verification.
+  - Only pairs posted by DIFFERENT accounts count (one account repeating itself is spam,
+    not coordination).
+  - duplicate_ratio = posts involved in >= 1 cross-account near-duplicate pair / total posts.
+  - Pairs are stored in duplicate_pairs for lineage tracing (explainability layer).
 """
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
-
-from datasketch import MinHash
+from typing import Any, Dict, List, Optional
 
 from .. import config, storage, utils
+from .minhash_lsh import near_duplicate_pairs
 
 logger = utils.setup_logger("duplicate_detection")
 
-
-def get_minhash(text: str, num_perm: int = 128) -> MinHash:
-    """Compute MinHash signature for a text string using word shingles."""
-    m = MinHash(num_perm=num_perm)
-    words = text.lower().split()
-    for w in words:
-        m.update(w.encode("utf-8"))
-    return m
+DEFAULT_THRESHOLD = 0.8
 
 
 def compute_duplicate_ratio(
     posts: List[Dict[str, Any]],
-    similarity_threshold: float = 0.90,
+    similarity_threshold: float = DEFAULT_THRESHOLD,
     ticker: str = "",
     window_start_utc: str = "",
     db_path: Optional[Path] = None,
 ) -> float:
     """
-    Compute duplicate_ratio for a list of post dicts.
-    Each dict must have: 'post_id', 'account_id', 'raw_text'.
-    Returns float ratio in [0.0, 1.0].
-    If ticker and window_start_utc are provided, writes duplicate pairs to storage.
+    Compute duplicate_ratio for a list of post dicts with 'post_id', 'account_id', 'raw_text'.
+    Returns a ratio in [0.0, 1.0]. Writes duplicate pairs to storage when ticker/window are given.
     """
     total_posts = len(posts)
     if total_posts <= 1:
         return 0.0
 
-    # Build MinHash signatures
-    minhashes: List[Tuple[str, str, MinHash]] = []
-    for p in posts:
-        text = p.get("raw_text", "")
-        if text:
-            m = get_minhash(text)
-            minhashes.append((p.get("post_id", ""), p.get("account_id", ""), m))
-
-    if not minhashes:
+    usable = [p for p in posts if p.get("raw_text")]
+    if len(usable) <= 1:
         return 0.0
 
     duplicate_post_ids = set()
     pair_rows: List[Dict[str, Any]] = []
-
-    for i in range(len(minhashes)):
-        id_i, acc_i, mh_i = minhashes[i]
-        for j in range(i + 1, len(minhashes)):
-            id_j, acc_j, mh_j = minhashes[j]
-
-            # Only flag as duplicate if posted by DIFFERENT accounts
-            if acc_i and acc_j and acc_i != acc_j:
-                sim = float(mh_i.jaccard(mh_j))
-                if sim >= similarity_threshold:
-                    duplicate_post_ids.add(id_i)
-                    duplicate_post_ids.add(id_j)
-                    if ticker and window_start_utc:
-                        pair_rows.append({
-                            "ticker": ticker,
-                            "window_start_utc": window_start_utc,
-                            "post_id_a": id_i,
-                            "post_id_b": id_j,
-                            "similarity": round(sim, 4),
-                        })
+    for i, j, sim in near_duplicate_pairs([p["raw_text"] for p in usable], threshold=similarity_threshold):
+        a, b = usable[i], usable[j]
+        acc_a, acc_b = a.get("account_id", ""), b.get("account_id", "")
+        if not (acc_a and acc_b and acc_a != acc_b):
+            continue
+        duplicate_post_ids.update((a.get("post_id", ""), b.get("post_id", "")))
+        if ticker and window_start_utc:
+            pair_rows.append({
+                "ticker": ticker,
+                "window_start_utc": window_start_utc,
+                "post_id_a": a.get("post_id", ""),
+                "post_id_b": b.get("post_id", ""),
+                "similarity": sim,
+            })
 
     if pair_rows and ticker and window_start_utc:
-        target_path = db_path if db_path else config.DB_PATH
-        storage.insert_duplicate_pairs(pair_rows, db_path=target_path)
+        storage.insert_duplicate_pairs(pair_rows, db_path=db_path if db_path else config.DB_PATH)
 
-    duplicate_ratio = round(len(duplicate_post_ids) / total_posts, 4)
-    return duplicate_ratio
-
+    return round(len(duplicate_post_ids) / total_posts, 4)

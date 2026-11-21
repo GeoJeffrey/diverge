@@ -32,7 +32,9 @@
   "paths": {
     "/health": {
       "get": {
-        "tags": ["Health"],
+        "tags": [
+          "Health"
+        ],
         "summary": "Service health check",
         "description": "Returns operational health status, database connectivity, and current UTC timestamp.",
         "operationId": "getHealth",
@@ -52,7 +54,9 @@
     },
     "/tickers": {
       "get": {
-        "tags": ["Tickers & Detail"],
+        "tags": [
+          "Tickers & Detail"
+        ],
         "summary": "List tracked market tickers",
         "description": "Returns all actively monitored market tickers with metadata (symbol, name, sector) and their latest high-level sentiment verdict.",
         "operationId": "getTickers",
@@ -72,7 +76,9 @@
     },
     "/ticker/{symbol}": {
       "get": {
-        "tags": ["Tickers & Detail"],
+        "tags": [
+          "Tickers & Detail"
+        ],
         "summary": "Full Advanced-mode ticker details",
         "description": "Returns comprehensive diagnostic view for a ticker including all 5 financial indices (Contagion Core, Reality Check, Capitulation Signal, Cross-Market Spillover, Language Divergence), Trust Score, composite metrics, and narrative context. Every index strictly adheres to the { score, available, coverage_note } pattern with approved human-readable labels.",
         "operationId": "getTickerDetail",
@@ -125,7 +131,9 @@
     },
     "/ticker/{symbol}/simple": {
       "get": {
-        "tags": ["Tickers & Detail"],
+        "tags": [
+          "Tickers & Detail"
+        ],
         "summary": "Simple-mode plain-language summary",
         "description": "Returns non-technical, plain-language consumer summary for a ticker. Excludes raw index numbers; provides qualitative verdict, composite score, explanatory synthesis sentence, and confidence rating.",
         "operationId": "getTickerSimple",
@@ -178,7 +186,9 @@
     },
     "/ticker/{symbol}/reasoning": {
       "get": {
-        "tags": ["Explainability"],
+        "tags": [
+          "Explainability"
+        ],
         "summary": "Post-level reasoning trace audit trail",
         "description": "Returns the granular post-level explainability trace ('Why this score?') for a ticker window. Groups source evidence posts into categorized audit drivers (virality onset, cross-market sentiment, regional vernacular, capitulation signals, near-duplicates, uncharacteristic consensus).",
         "operationId": "getTickerReasoningTrace",
@@ -231,7 +241,9 @@
     },
     "/auth/signup": {
       "post": {
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "summary": "Register a new user account",
         "description": "Creates a new user profile and returns access & refresh tokens.",
         "operationId": "authSignup",
@@ -271,7 +283,9 @@
     },
     "/auth/login": {
       "post": {
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "summary": "Authenticate user",
         "description": "Validates user credentials and issues a new access token and refresh token pair.",
         "operationId": "authLogin",
@@ -311,7 +325,9 @@
     },
     "/auth/refresh": {
       "post": {
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "summary": "Refresh expired access token",
         "description": "Exchanges a valid refresh token for a newly issued access token and refreshed refresh token.",
         "operationId": "authRefresh",
@@ -351,7 +367,9 @@
     },
     "/auth/me": {
       "get": {
-        "tags": ["Authentication"],
+        "tags": [
+          "Authentication"
+        ],
         "summary": "Retrieve authenticated user profile",
         "description": "Returns account details, permissions, and preferences for the currently authenticated bearer token session.",
         "operationId": "getAuthMe",
@@ -383,6 +401,82 @@
           }
         }
       }
+    },
+    "/outlook": {
+      "get": {
+        "tags": [
+          "Next-day outlook"
+        ],
+        "summary": "Latest next-day outlook for every ticker",
+        "operationId": "listOutlooks",
+        "responses": {
+          "200": {
+            "description": "Latest outlook per ticker",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutlookListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ticker/{symbol}/outlook": {
+      "get": {
+        "tags": [
+          "Next-day outlook"
+        ],
+        "summary": "Next-day outlook for one ticker",
+        "description": "Probability that the next close is higher, expected move size versus normal, the features driving both, and whether the estimate was dampened because the conversation looks coordinated. Unavailable outlooks carry a coverage_note.",
+        "operationId": "getTickerOutlook",
+        "parameters": [
+          {
+            "name": "symbol",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "INFY"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Latest outlook (available or with a coverage note)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TickerOutlookResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/outlook/model": {
+      "get": {
+        "tags": [
+          "Next-day outlook"
+        ],
+        "summary": "Outlook model card",
+        "description": "Model features and weights plus the out-of-sample walk-forward track record.",
+        "operationId": "getOutlookModel",
+        "responses": {
+          "200": {
+            "description": "Model card",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutlookModelResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -397,11 +491,20 @@
     "schemas": {
       "HealthResponse": {
         "type": "object",
-        "required": ["status", "version", "database", "timestamp_utc"],
+        "required": [
+          "status",
+          "version",
+          "database",
+          "timestamp_utc"
+        ],
         "properties": {
           "status": {
             "type": "string",
-            "enum": ["healthy", "degraded", "unhealthy"],
+            "enum": [
+              "healthy",
+              "degraded",
+              "unhealthy"
+            ],
             "example": "healthy"
           },
           "version": {
@@ -410,7 +513,10 @@
           },
           "database": {
             "type": "string",
-            "enum": ["connected", "disconnected"],
+            "enum": [
+              "connected",
+              "disconnected"
+            ],
             "example": "connected"
           },
           "timestamp_utc": {
@@ -422,7 +528,10 @@
       },
       "ErrorResponse": {
         "type": "object",
-        "required": ["error_code", "message"],
+        "required": [
+          "error_code",
+          "message"
+        ],
         "properties": {
           "error_code": {
             "type": "string",
@@ -444,7 +553,11 @@
       },
       "SignupRequest": {
         "type": "object",
-        "required": ["email", "password", "full_name"],
+        "required": [
+          "email",
+          "password",
+          "full_name"
+        ],
         "properties": {
           "email": {
             "type": "string",
@@ -465,7 +578,10 @@
       },
       "LoginRequest": {
         "type": "object",
-        "required": ["email", "password"],
+        "required": [
+          "email",
+          "password"
+        ],
         "properties": {
           "email": {
             "type": "string",
@@ -481,7 +597,9 @@
       },
       "RefreshTokenRequest": {
         "type": "object",
-        "required": ["refresh_token"],
+        "required": [
+          "refresh_token"
+        ],
         "properties": {
           "refresh_token": {
             "type": "string",
@@ -491,7 +609,12 @@
       },
       "AuthTokenResponse": {
         "type": "object",
-        "required": ["access_token", "refresh_token", "token_type", "expires_in"],
+        "required": [
+          "access_token",
+          "refresh_token",
+          "token_type",
+          "expires_in"
+        ],
         "properties": {
           "access_token": {
             "type": "string",
@@ -516,7 +639,13 @@
       },
       "UserProfileResponse": {
         "type": "object",
-        "required": ["id", "email", "full_name", "role", "created_at"],
+        "required": [
+          "id",
+          "email",
+          "full_name",
+          "role",
+          "created_at"
+        ],
         "properties": {
           "id": {
             "type": "string",
@@ -534,7 +663,11 @@
           },
           "role": {
             "type": "string",
-            "enum": ["standard", "pro", "admin"],
+            "enum": [
+              "standard",
+              "pro",
+              "admin"
+            ],
             "example": "standard"
           },
           "created_at": {
@@ -546,7 +679,12 @@
       },
       "IndexMetricValue": {
         "type": "object",
-        "required": ["label", "score", "available", "coverage_note"],
+        "required": [
+          "label",
+          "score",
+          "available",
+          "coverage_note"
+        ],
         "description": "Standardized index metric envelope. If available is false, score is null and coverage_note explains the data requirement.",
         "properties": {
           "label": {
@@ -576,7 +714,17 @@
       },
       "TickerSimpleItem": {
         "type": "object",
-        "required": ["id", "symbol", "name", "sector", "score", "verdict_label", "why_sentence", "trust_label", "window_start_utc"],
+        "required": [
+          "id",
+          "symbol",
+          "name",
+          "sector",
+          "score",
+          "verdict_label",
+          "why_sentence",
+          "trust_label",
+          "window_start_utc"
+        ],
         "properties": {
           "id": {
             "type": "string",
@@ -605,7 +753,12 @@
           },
           "verdict_label": {
             "type": "string",
-            "enum": ["building", "mixed", "fading", "insufficient_data"],
+            "enum": [
+              "building",
+              "mixed",
+              "fading",
+              "insufficient_data"
+            ],
             "example": "mixed"
           },
           "why_sentence": {
@@ -626,7 +779,10 @@
       },
       "TickerListResponse": {
         "type": "object",
-        "required": ["total", "tickers"],
+        "required": [
+          "total",
+          "tickers"
+        ],
         "properties": {
           "total": {
             "type": "integer",
@@ -649,39 +805,71 @@
       },
       "IndicesBreakdown": {
         "type": "object",
-        "required": ["rn", "cirg", "cli", "cassi", "vdi"],
+        "required": [
+          "rn",
+          "cirg",
+          "cli",
+          "cassi",
+          "vdi"
+        ],
         "description": "All 5 financial indices adhering to the frozen null-handling and approved human-readable label rules.",
         "properties": {
           "rn": {
-            "allOf": [{ "$ref": "#/components/schemas/IndexMetricValue" }],
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/IndexMetricValue"
+              }
+            ],
             "description": "Contagion Core (Rn) — Epidemiological viral narrative reproduction rate"
           },
           "cirg": {
-            "allOf": [{ "$ref": "#/components/schemas/IndexMetricValue" }],
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/IndexMetricValue"
+              }
+            ],
             "description": "Reality Check (CIRG) — Consumer app/product reviews vs. investor sentiment gap"
           },
           "cli": {
-            "allOf": [{ "$ref": "#/components/schemas/IndexMetricValue" }],
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/IndexMetricValue"
+              }
+            ],
             "description": "Capitulation Signal (CLI) — Despair, liquidation, and stop-loss panic density"
           },
           "cassi": {
-            "allOf": [{ "$ref": "#/components/schemas/IndexMetricValue" }],
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/IndexMetricValue"
+              }
+            ],
             "description": "Cross-Market Spillover (CASSI) — VAR cross-asset sentiment transmission"
           },
           "vdi": {
-            "allOf": [{ "$ref": "#/components/schemas/IndexMetricValue" }],
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/IndexMetricValue"
+              }
+            ],
             "description": "Language Divergence (VDI) — Regional vernacular vs. institutional English sentiment"
           }
         }
       },
       "CoordinationMetric": {
         "type": "object",
-        "required": ["label", "coordination_score", "confidence_flag", "available", "coverage_note"],
+        "required": [
+          "label",
+          "coordination_score",
+          "confidence_flag",
+          "available",
+          "coverage_note"
+        ],
         "description": "Inorganic coordination and trust score evaluation.",
         "properties": {
           "label": {
             "type": "string",
-            "example": "Trust Score"
+            "example": "Coordination risk"
           },
           "coordination_score": {
             "type": "number",
@@ -693,7 +881,12 @@
           },
           "confidence_flag": {
             "type": "string",
-            "enum": ["high_trust", "moderate", "low_trust", "insufficient_data"],
+            "enum": [
+              "high_trust",
+              "moderate",
+              "low_trust",
+              "insufficient_data"
+            ],
             "example": "high_trust"
           },
           "available": {
@@ -709,7 +902,12 @@
       },
       "PhylogenyTransitionItem": {
         "type": "object",
-        "required": ["window_start_utc", "mutation_type", "mutation_detail", "composite_delta"],
+        "required": [
+          "window_start_utc",
+          "mutation_type",
+          "mutation_detail",
+          "composite_delta"
+        ],
         "properties": {
           "window_start_utc": {
             "type": "string",
@@ -718,7 +916,13 @@
           },
           "mutation_type": {
             "type": "string",
-            "enum": ["stable", "dominant_index_shift", "composite_reversal", "new_risk_flag", "flag_resolved"],
+            "enum": [
+              "stable",
+              "dominant_index_shift",
+              "composite_reversal",
+              "new_risk_flag",
+              "flag_resolved"
+            ],
             "example": "stable"
           },
           "mutation_detail": {
@@ -794,11 +998,18 @@
             "items": {
               "type": "string"
             },
-            "example": ["consumer_reality_underpriced"]
+            "example": [
+              "consumer_reality_underpriced"
+            ]
           },
           "aggregation_confidence": {
             "type": "string",
-            "enum": ["high_trust", "moderate", "low_trust", "insufficient_data"],
+            "enum": [
+              "high_trust",
+              "moderate",
+              "low_trust",
+              "insufficient_data"
+            ],
             "example": "high_trust"
           },
           "indices": {
@@ -818,7 +1029,15 @@
       },
       "ReasoningTraceItem": {
         "type": "object",
-        "required": ["trace_id", "post_id", "account_id", "platform", "weight", "upvotes", "text_preview"],
+        "required": [
+          "trace_id",
+          "post_id",
+          "account_id",
+          "platform",
+          "weight",
+          "upvotes",
+          "text_preview"
+        ],
         "properties": {
           "trace_id": {
             "type": "integer",
@@ -834,7 +1053,13 @@
           },
           "platform": {
             "type": "string",
-            "enum": ["stocktwits", "reddit", "telegram", "rss_news", "google_trends"],
+            "enum": [
+              "stocktwits",
+              "reddit",
+              "telegram",
+              "rss_news",
+              "google_trends"
+            ],
             "example": "stocktwits"
           },
           "weight": {
@@ -855,7 +1080,12 @@
       },
       "ReasoningTraceResponse": {
         "type": "object",
-        "required": ["symbol", "window_start_utc", "total_traces", "categories"],
+        "required": [
+          "symbol",
+          "window_start_utc",
+          "total_traces",
+          "categories"
+        ],
         "properties": {
           "symbol": {
             "type": "string",
@@ -877,33 +1107,269 @@
             "properties": {
               "rn_onset": {
                 "type": "array",
-                "items": { "$ref": "#/components/schemas/ReasoningTraceItem" }
+                "items": {
+                  "$ref": "#/components/schemas/ReasoningTraceItem"
+                }
               },
               "cassi_sentiment": {
                 "type": "array",
-                "items": { "$ref": "#/components/schemas/ReasoningTraceItem" }
+                "items": {
+                  "$ref": "#/components/schemas/ReasoningTraceItem"
+                }
               },
               "vdi_divergence": {
                 "type": "array",
-                "items": { "$ref": "#/components/schemas/ReasoningTraceItem" }
+                "items": {
+                  "$ref": "#/components/schemas/ReasoningTraceItem"
+                }
               },
               "cli_capitulation": {
                 "type": "array",
-                "items": { "$ref": "#/components/schemas/ReasoningTraceItem" }
+                "items": {
+                  "$ref": "#/components/schemas/ReasoningTraceItem"
+                }
               },
               "duplicate_flag": {
                 "type": "array",
-                "items": { "$ref": "#/components/schemas/ReasoningTraceItem" }
+                "items": {
+                  "$ref": "#/components/schemas/ReasoningTraceItem"
+                }
               },
               "sentiment_variance_outlier": {
                 "type": "array",
-                "items": { "$ref": "#/components/schemas/ReasoningTraceItem" }
+                "items": {
+                  "$ref": "#/components/schemas/ReasoningTraceItem"
+                }
               }
             },
             "additionalProperties": {
               "type": "array",
-              "items": { "$ref": "#/components/schemas/ReasoningTraceItem" }
+              "items": {
+                "$ref": "#/components/schemas/ReasoningTraceItem"
+              }
             }
+          }
+        }
+      },
+      "OutlookDriver": {
+        "type": "object",
+        "required": [
+          "feature",
+          "label",
+          "kind",
+          "contribution",
+          "pushes"
+        ],
+        "properties": {
+          "feature": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "narrative",
+              "price"
+            ]
+          },
+          "contribution": {
+            "type": "number",
+            "description": "Effect on the model's log-odds (direction) or expected move"
+          },
+          "pushes": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ]
+          }
+        }
+      },
+      "TickerOutlookResponse": {
+        "type": "object",
+        "required": [
+          "symbol",
+          "name",
+          "available",
+          "disclaimer"
+        ],
+        "properties": {
+          "symbol": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "coverage_note": {
+            "type": "string",
+            "nullable": true
+          },
+          "as_of_day": {
+            "type": "string",
+            "nullable": true,
+            "description": "Trading day whose close the outlook follows"
+          },
+          "prob_up": {
+            "type": "number",
+            "nullable": true,
+            "description": "Probability the next close is higher"
+          },
+          "lean": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down",
+              "neutral"
+            ],
+            "nullable": true
+          },
+          "lean_strength": {
+            "type": "string",
+            "enum": [
+              "lean",
+              "slight",
+              "none"
+            ],
+            "nullable": true
+          },
+          "expected_move_pct": {
+            "type": "number",
+            "nullable": true
+          },
+          "typical_move_pct": {
+            "type": "number",
+            "nullable": true
+          },
+          "move_label": {
+            "type": "string",
+            "enum": [
+              "larger_than_usual",
+              "typical",
+              "smaller_than_usual",
+              "unknown"
+            ],
+            "nullable": true
+          },
+          "direction_drivers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OutlookDriver"
+            }
+          },
+          "move_drivers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OutlookDriver"
+            }
+          },
+          "coordination_flag": {
+            "type": "string",
+            "nullable": true
+          },
+          "coordination_dampened": {
+            "type": "boolean"
+          },
+          "posts_today": {
+            "type": "integer",
+            "nullable": true
+          },
+          "model_version": {
+            "type": "string",
+            "nullable": true
+          },
+          "generated_at": {
+            "type": "string",
+            "nullable": true
+          },
+          "disclaimer": {
+            "type": "string"
+          }
+        }
+      },
+      "OutlookListResponse": {
+        "type": "object",
+        "required": [
+          "total",
+          "outlooks"
+        ],
+        "properties": {
+          "total": {
+            "type": "integer"
+          },
+          "outlooks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TickerOutlookResponse"
+            }
+          }
+        }
+      },
+      "OutlookModelFeature": {
+        "type": "object",
+        "required": [
+          "feature",
+          "label",
+          "kind",
+          "direction_weight",
+          "move_weight"
+        ],
+        "properties": {
+          "feature": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "direction_weight": {
+            "type": "number"
+          },
+          "move_weight": {
+            "type": "number"
+          }
+        }
+      },
+      "OutlookModelResponse": {
+        "type": "object",
+        "required": [
+          "available",
+          "disclaimer"
+        ],
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "string",
+            "nullable": true
+          },
+          "trained_at": {
+            "type": "string",
+            "nullable": true
+          },
+          "training_data": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "track_record": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OutlookModelFeature"
+            }
+          },
+          "disclaimer": {
+            "type": "string"
           }
         }
       }

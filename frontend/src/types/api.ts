@@ -150,3 +150,90 @@ export interface ReasoningTraceResponse {
 }
 
 export type IndexKey = keyof IndicesBreakdown;
+
+// ── Next-day outlook ──
+
+export type OutlookLean = "up" | "down" | "neutral";
+export type OutlookLeanStrength = "lean" | "slight" | "none";
+export type OutlookMoveLabel = "larger_than_usual" | "typical" | "smaller_than_usual" | "unknown";
+
+export interface OutlookDriver {
+  feature: string;
+  label: string;
+  kind: "narrative" | "price";
+  contribution: number;
+  pushes: "up" | "down";
+}
+
+export interface TickerOutlookResponse {
+  symbol: string;
+  name: string;
+  available: boolean;
+  coverage_note: string | null;
+  as_of_day: string | null;
+  prob_up: number | null;
+  lean: OutlookLean | null;
+  lean_strength: OutlookLeanStrength | null;
+  expected_move_pct: number | null;
+  typical_move_pct: number | null;
+  move_label: OutlookMoveLabel | null;
+  direction_drivers: OutlookDriver[];
+  move_drivers: OutlookDriver[];
+  coordination_flag: ConfidenceFlag | null;
+  coordination_dampened: boolean;
+  posts_today: number | null;
+  model_version: string | null;
+  generated_at: string | null;
+  disclaimer: string;
+}
+
+export interface OutlookListResponse {
+  total: number;
+  outlooks: TickerOutlookResponse[];
+}
+
+export interface CallTier {
+  share_of_days: number;
+  accuracy: number | null;
+  days: number;
+}
+
+export interface OutlookTrackRecord {
+  test_period: string;
+  test_days: number;
+  tickers: string[];
+  direction: {
+    auc: number;
+    accuracy: number;
+    always_up_accuracy: number;
+    brier: number;
+    lean_calls: CallTier;
+    slight_calls: CallTier;
+    no_call: CallTier;
+    calibration: { mean_predicted: number; actual_up_rate: number; days: number }[];
+  };
+  move: {
+    oos_r2: number;
+    oos_r2_price_only: number;
+    rank_corr: number;
+    larger_than_usual_calls: { share_of_days: number; precision: number | null; base_rate: number };
+  };
+}
+
+export interface OutlookModelFeature {
+  feature: string;
+  label: string;
+  kind: string;
+  direction_weight: number;
+  move_weight: number;
+}
+
+export interface OutlookModelResponse {
+  available: boolean;
+  version: string | null;
+  trained_at: string | null;
+  training_data: { source?: string; sentiment_model?: string; ticker_days?: number; first_day?: string; last_day?: string };
+  track_record: Partial<OutlookTrackRecord>;
+  features: OutlookModelFeature[];
+  disclaimer: string;
+}

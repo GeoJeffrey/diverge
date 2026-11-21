@@ -98,10 +98,8 @@ def compute_vdi(
     db_path: Path = config.DB_PATH,
 ) -> Optional[float]:
     """
-    Fetch posts for (ticker, window) from DB, separate by language/platform, and return VDI.
-    If bilingual data (English vs Hinglish) is available (>=5 posts each), calculates linguistic VDI.
-    If Hinglish is insufficient, computes cross-platform vernacular divergence (e.g. StockTwits vs Reddit)
-    or sentiment subgroup variance to ensure no ticker is left with a NULL value.
+    Fetch posts for (ticker, window) and return VDI = Z(English) - Z(Hinglish).
+    Returns None unless both language groups have at least MIN_POSTS_PER_LANG posts.
     """
     posts = storage.get_text_features_for_window(
         ticker=ticker,
@@ -113,57 +111,18 @@ def compute_vdi(
         logger.info(f"No posts found for ticker {ticker} -> VDI is None.")
         return None
 
-    en_scores = []
-    hinglish_scores = []
-    platform_scores: Dict[str, List[float]] = {}
-
+    en_scores: List[float] = []
+    hinglish_scores: List[float] = []
     for p in posts:
-        lang = p.get("language", "en")
-        plat = p.get("platform", "stocktwits")
         score = p.get("irony_adjusted_sentiment")
         if score is None:
-            score = p.get("sentiment_score", 0.0)
-
-        val = float(score)
-        platform_scores.setdefault(plat, []).append(val)
-
+            score = p.get("sentiment_score")
+        if score is None:
+            continue
+        lang = p.get("language", "en")
         if lang in ("en", "english"):
-            en_scores.append(val)
+            en_scores.append(float(score))
         elif lang in ("hi-en-mixed", "hinglish", "hi"):
-            hinglish_scores.append(val)
+            hinglish_scores.append(float(score))
 
-    # 1. Try language divergence with relaxed threshold (>=5 posts each)
-    if len(en_scores) >= 5 and len(hinglish_scores) >= 5:
-        return compute_vdi_from_scores(en_scores, hinglish_scores, min_posts=5)
-
-    # 2. Cross-platform vernacular divergence fallback (e.g. StockTwits vs Reddit/Telegram/RSS)
-    plats_with_data = [pl for pl, scs in platform_scores.items() if len(scs) >= 2]
-    if len(plats_with_data) >= 2:
-        # Take two largest platform cohorts
-        plats_sorted = sorted(plats_with_data, key=lambda pl: len(platform_scores[pl]), reverse=True)
-        pl1, pl2 = plats_sorted[0], plats_sorted[1]
-        s1 = platform_scores[pl1]
-        s2 = platform_scores[pl2]
-        pooled = np.array(s1 + s2, dtype=float)
-        p_std = float(np.std(pooled)) if len(pooled) > 1 else 0.0
-        p_mean = float(np.mean(pooled))
-        if p_std > 1e-6:
-            z1 = (float(np.mean(s1)) - p_mean) / p_std
-            z2 = (float(np.mean(s2)) - p_mean) / p_std
-            return round(float(z1 - z2), 4)
-
-    # 3. If single platform or sparse distribution, compute conviction vs hedge sentiment divergence
-    all_scores = [float(p.get("irony_adjusted_sentiment") if p.get("irony_adjusted_sentiment") is not None else p.get("sentiment_score", 0.0)) for p in posts]
-    if len(all_scores) >= 1:
-        arr = np.array(all_scores, dtype=float)
-        med = float(np.median(arr))
-        upper_half = arr[arr >= med]
-        lower_half = arr[arr < med]
-        if len(lower_half) > 0 and np.std(arr) > 1e-6:
-            z_up = (float(np.mean(upper_half)) - float(np.mean(arr))) / float(np.std(arr))
-            z_dn = (float(np.mean(lower_half)) - float(np.mean(arr))) / float(np.std(arr))
-            vdi_val = round(float(z_up - z_dn), 4)
-            return vdi_val if abs(vdi_val) > 1e-4 else 0.01
-
-    return 0.01
-
+    return compute_vdi_from_scores(en_scores, hinglish_scores)

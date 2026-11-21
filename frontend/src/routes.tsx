@@ -9,6 +9,7 @@ import IndicesPage from "./pages/Indices";
 import IntegrityPage from "./pages/Integrity";
 import ExplainabilityPage from "./pages/Explainability";
 import Settings from "./pages/Settings";
+import ModelCardPage from "./pages/ModelCard";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
 export const router = createBrowserRouter([
@@ -23,6 +24,7 @@ export const router = createBrowserRouter([
       { path: "indices", Component: IndicesPage },
       { path: "integrity", Component: IntegrityPage },
       { path: "explainability", Component: ExplainabilityPage },
+      { path: "model", Component: ModelCardPage },
       {
         path: "settings",
         element: (

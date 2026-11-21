@@ -150,3 +150,58 @@ class ReasoningTraceResponse(BaseModel):
     window_start_utc: Optional[str] = None
     total_traces: int
     categories: Dict[str, List[ReasoningTraceItem]]
+
+
+# ── Next-day outlook ──
+
+class OutlookDriver(BaseModel):
+    feature: str
+    label: str
+    kind: str = Field(..., description="narrative | price")
+    contribution: float = Field(..., description="Effect on the model's log-odds (direction) or expected move")
+    pushes: str = Field(..., description="up | down")
+
+
+class TickerOutlookResponse(BaseModel):
+    symbol: str
+    name: str
+    available: bool
+    coverage_note: Optional[str] = None
+    as_of_day: Optional[str] = Field(None, description="Trading day whose close the outlook follows")
+    prob_up: Optional[float] = Field(None, description="Probability the next close is higher")
+    lean: Optional[str] = Field(None, description="up | down | neutral")
+    lean_strength: Optional[str] = Field(None, description="lean | slight | none")
+    expected_move_pct: Optional[float] = None
+    typical_move_pct: Optional[float] = None
+    move_label: Optional[str] = Field(None, description="larger_than_usual | typical | smaller_than_usual")
+    direction_drivers: List[OutlookDriver] = []
+    move_drivers: List[OutlookDriver] = []
+    coordination_flag: Optional[str] = None
+    coordination_dampened: bool = False
+    posts_today: Optional[int] = None
+    model_version: Optional[str] = None
+    generated_at: Optional[str] = None
+    disclaimer: str
+
+
+class OutlookListResponse(BaseModel):
+    total: int
+    outlooks: List[TickerOutlookResponse]
+
+
+class OutlookModelFeature(BaseModel):
+    feature: str
+    label: str
+    kind: str
+    direction_weight: float
+    move_weight: float
+
+
+class OutlookModelResponse(BaseModel):
+    available: bool
+    version: Optional[str] = None
+    trained_at: Optional[str] = None
+    training_data: Dict[str, Any] = {}
+    track_record: Dict[str, Any] = {}
+    features: List[OutlookModelFeature] = []
+    disclaimer: str

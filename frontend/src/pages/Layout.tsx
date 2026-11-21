@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/auth/AuthProvider";
 import { labelForRole } from "@/lib/labels";
-import { api } from "@/lib/api";
+import { api, IS_DEMO_DATA } from "@/lib/api";
 
 const NAV = [
   { label: "Overview", to: (s: string) => `/ticker/${s}` },
@@ -11,6 +11,7 @@ const NAV = [
   { label: "Indices", to: (s: string) => `/indices?symbol=${s}` },
   { label: "Integrity", to: (s: string) => `/integrity?symbol=${s}` },
   { label: "Why this score", to: (s: string) => `/explainability?symbol=${s}` },
+  { label: "Model accuracy", to: () => "/model" },
   { label: "Settings", to: () => "/settings" },
 ];
 
@@ -216,6 +217,11 @@ export default function Layout() {
             </>
           )}
         </header>
+        {IS_DEMO_DATA && (
+          <p className="border-b border-[#e8d9b5] bg-[#fbf3df] px-4 py-2 text-xs text-[#6a5208] md:px-7" role="note">
+            Demo mode: showing built-in sample data, not live results. Set VITE_API_BASE_URL to connect to the API.
+          </p>
+        )}
         <main id="main" className="min-h-0 flex-1 overflow-y-auto">
           <Outlet context={{ symbol, setSymbol: pickSymbol, symbols } satisfies ShellContext} />
         </main>

@@ -10,7 +10,6 @@ langdetect>=1.0.9
 scipy>=1.9.0
 statsmodels>=0.13.5
 numpy>=1.23.0
-datasketch>=1.5.0
 
 # API & Web Server
 fastapi>=0.110.0
@@ -30,6 +29,9 @@ python-multipart>=0.0.9
 # Validation & Types
 email-validator>=2.1.0
 pydantic[email]>=2.6.0
+
+# Market data (next-day outlook)
+yfinance>=0.2.40
 
 # Background Task Scheduling
 apscheduler>=3.10.4

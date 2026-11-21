@@ -17,99 +17,24 @@ import argparse
 import sys
 from pathlib import Path
 
-from diverge.features import run_phase2
-from diverge.indices import run_phase3
 from diverge import config, storage, utils
-from diverge.scrapers import run_phase1 as phase1_main
+from diverge.pipeline import run_full_pipeline
 
 logger = utils.setup_logger("run_all_master")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Diverge Pipeline Master Orchestrator (Phase 1 + 2 + 3)")
-    parser.add_argument(
-        "--skip-scrape",
-        action="store_true",
-        help="Skip Phase 1 live data scraping and run Phase 2 + Phase 3 on existing database records.",
-    )
+    parser = argparse.ArgumentParser(description="Run the full Diverge pipeline once (phases 1-8).")
+    parser.add_argument("--skip-scrape", action="store_true", help="Reuse existing posts; skip ingestion.")
     args = parser.parse_args()
 
-    logger.info("=" * 70)
-    logger.info("DIVERGE MASTER PIPELINE — END-TO-END EXECUTION")
-    logger.info("=" * 70)
-
-    db_path = config.DB_PATH
-
-    # -- Phase 1: Data Collection Scrapers --------------------
-    if getattr(args, "skip_scrape", False):
-        logger.info("[PHASE 1] --skip-scrape flag set. Skipping live scrapers execution.")
-    else:
-        logger.info("--- [PHASE 1] Executing Scrapers Data Collection Pipeline ---")
-        try:
-            phase1_main.run_pipeline()
-            logger.info("[PHASE 1] Data collection complete.")
-        except Exception as e:
-            logger.error(f"[PHASE 1 FAILED]: {e}")
-
-    # Check raw_posts data presence before Phase 2
-    raw_count = storage.count_by_platform(db_path=db_path)
-    total_raw = sum(raw_count.values())
-    if total_raw == 0:
-        logger.warning("CRITICAL: raw_posts table is empty. Cannot proceed with Phase 2 feature extraction. STOPPING.")
+    status = run_full_pipeline(skip_scrape=args.skip_scrape)
+    print_master_summary(config.DB_PATH)
+    print("PHASE STATUS")
+    for phase, result in status.items():
+        print(f"  {phase:<18} {result}")
+    if any(v.startswith("failed") for v in status.values()):
         sys.exit(1)
-    else:
-        logger.info(f"Database contains {total_raw} raw posts across {len(raw_count)} platforms.")
-
-    # -- Phase 2: Feature Extraction ---------------------------
-    logger.info("--- [PHASE 2] Executing Feature Extraction Pipeline ---")
-    try:
-        run_phase2.main()
-        logger.info("[PHASE 2] Feature extraction complete.")
-    except Exception as e:
-        logger.error(f"[PHASE 2 FAILED]: {e}")
-
-    # Check text_features/post_timing data presence before Phase 3
-    phase2_counts = storage.count_phase2_tables(db_path=db_path)
-    if phase2_counts.get("text_features", 0) == 0 and phase2_counts.get("post_timing", 0) == 0:
-        logger.warning("WARNING: Phase 2 tables (text_features/post_timing) are empty. Phase 3 indices will return NULL.")
-
-    # -- Phase 3: Financial Indices ----------------------------
-    logger.info("--- [PHASE 3] Executing Financial Indices Pipeline ---")
-    try:
-        run_phase3.run(db_path=db_path)
-        logger.info("[PHASE 3] Financial indices pipeline complete.")
-    except Exception as e:
-        logger.error(f"[PHASE 3 FAILED]: {e}")
-
-    # -- Phase 4: Integrity & Coordination Scoring -----------
-    logger.info("--- [PHASE 4] Executing Integrity & Coordination Scoring Pipeline ---")
-    try:
-        from diverge.integrity import run_phase4
-        run_phase4.run(db_path=db_path)
-        logger.info("[PHASE 4] Integrity & coordination scoring pipeline complete.")
-    except Exception as e:
-        logger.error(f"[PHASE 4 FAILED]: {e}")
-
-    # -- Phase 5: Composite Aggregation Pipeline -------------
-    logger.info("--- [PHASE 5] Executing Composite Aggregation Pipeline ---")
-    try:
-        from diverge.aggregation import run_phase5
-        run_phase5.run(db_path=db_path)
-        logger.info("[PHASE 5] Composite aggregation pipeline complete.")
-    except Exception as e:
-        logger.error(f"[PHASE 5 FAILED]: {e}")
-
-    # -- Phase 6: Explainability & Narrative Lineage Pipeline 
-    logger.info("--- [PHASE 6] Executing Explainability & Narrative Lineage Pipeline ---")
-    try:
-        from diverge.explainability import run_phase6
-        run_phase6.run(db_path=db_path)
-        logger.info("[PHASE 6] Explainability & narrative lineage pipeline complete.")
-    except Exception as e:
-        logger.error(f"[PHASE 6 FAILED]: {e}")
-
-    # -- Final Combined Summary Report -------------------------
-    print_master_summary(db_path)
 
 
 def print_master_summary(db_path: Path):
@@ -146,6 +71,7 @@ def print_master_summary(db_path: Path):
     print(f"  duplicate_pairs          {all_table_counts.get('duplicate_pairs', 0):>8,} rows")
     print(f"  reasoning_trace          {all_table_counts.get('reasoning_trace', 0):>8,} rows")
     print(f"  narrative_phylogeny      {all_table_counts.get('narrative_phylogeny', 0):>8,} rows")
+    print(f"  ticker_outlook           {all_table_counts.get('ticker_outlook', 0):>8,} rows")
     print("=" * 70)
     print("\nData pipeline complete. Run python run_server.py to view results.\n")
 

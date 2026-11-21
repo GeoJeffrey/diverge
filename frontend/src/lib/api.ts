@@ -142,4 +142,10 @@ export const api = {
       body: { email, password, full_name },
     }),
   me: () => apiFetch<import("@/types/api").UserProfileResponse>("/auth/me", { auth: true }),
+  outlooks: () => apiFetch<import("@/types/api").OutlookListResponse>("/outlook"),
+  outlook: (symbol: string) =>
+    apiFetch<import("@/types/api").TickerOutlookResponse>(`/ticker/${encodeURIComponent(symbol)}/outlook`),
+  outlookModel: () => apiFetch<import("@/types/api").OutlookModelResponse>("/outlook/model"),
 };
+
+export const IS_DEMO_DATA = isMock();
