@@ -87,6 +87,11 @@ def api_benchmark() -> bool:
     port = "8765"
     env = {**os.environ, "PYTHONPATH": str(ROOT / "src")}
     LOGS.mkdir(parents=True, exist_ok=True)
+    # Locally the API reads the pipeline's SQLite store, which has every table except the auth table
+    # (in production `alembic upgrade head` creates it). Create just that one so the benchmark can sign up.
+    if not run("api_db_init", [PY, "-c", "from diverge.db.base import Base, engine; from diverge.db.models import User; "
+                                       "Base.metadata.create_all(engine, tables=[User.__table__])"], env=env):
+        return False
     server_log = (LOGS / "api_server.log").open("w", encoding="utf-8")
     server = subprocess.Popen([PY, "run_server.py", "--port", port], cwd=ROOT, stdout=server_log,
                               stderr=subprocess.STDOUT, env=env)
