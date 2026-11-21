@@ -70,7 +70,7 @@ def preflight(quick: bool) -> bool:
             print("    !! No CUDA GPU: the full run will be very slow. Install the CUDA build of PyTorch "
                   "or use --quick.")
     except ImportError:
-        print("    !! PyTorch not installed (pip install torch --index-url https://download.pytorch.org/whl/cu121)")
+        print("    !! PyTorch not installed (pip install torch --index-url https://download.pytorch.org/whl/cu126)")
         ok &= quick
     free_gb = shutil.disk_usage(ROOT).free / 1e9
     print(f"    Free disk: {free_gb:.0f} GB", "OK" if free_gb >= 10 else "-- need about 10 GB")
