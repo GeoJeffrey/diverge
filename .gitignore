@@ -37,3 +37,8 @@ models/
 
 # Local run logs from scripts/run_everything.py
 reports/run_logs/
+
+# Playwright review screenshots (frontend rebuild)
+frontend/screenshots/
+frontend/playwright-report/
+frontend/test-results/
