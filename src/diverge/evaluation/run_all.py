@@ -36,6 +36,11 @@ def credible_gain(m) -> bool:
             and m["oos_r2_with_narrative"] > m["oos_r2_price_only"])
 
 
+def _pct_or_na(value, why: str) -> str:
+    """A metric that could not be computed is reported as n/a with the reason, never as 0%."""
+    return f"n/a ({why})" if value is None else f"{100 * value:.0f}%"
+
+
 def _row(cells):
     return "| " + " | ".join(str(c) for c in cells) + " |"
 
@@ -212,10 +217,11 @@ def render() -> Path:
                   f"{real['labelled_windows']} real 2-hour windows from the live scrapers, labelled without seeing the model's score "
                   f"(half highest-scored, half random; {real['unsure_excluded']} marked unsure and excluded).", "",
                   _row(["Metric", "Value"]), _row(["---"] * 2),
-                  _row(["Precision when flagged", f"{100 * (real['precision_when_flagged'] or 0):.0f}% of {real['flagged_windows']} flagged windows"]),
+                  _row(["Precision when flagged", _pct_or_na(real["precision_when_flagged"], f"no flagged windows among the labelled ones")
+                        + (f" of {real['flagged_windows']} flagged windows" if real["precision_when_flagged"] is not None else "")]),
                   _row(["ROC-AUC on labelled windows", real.get("roc_auc", "n/a (one class only)")]),
-                  _row(["False-alarm rate (random windows)", f"{100 * (rs['false_alarm_rate'] or 0):.0f}%"]),
-                  _row(["Coordinated share of random windows", f"{100 * (rs['coordinated_prevalence'] or 0):.0f}%"]), ""]
+                  _row(["False-alarm rate (random windows)", _pct_or_na(rs["false_alarm_rate"], f"{rs['windows']} labelled random windows")]),
+                  _row(["Coordinated share of random windows", _pct_or_na(rs["coordinated_prevalence"], f"{rs['windows']} labelled random windows")]), ""]
         if real["flagged_windows"] >= 10 and (real["precision_when_flagged"] or 0) >= 0.7:
             bullets.append(f"Validated the bot detector on {real['labelled_windows']} blind hand-labelled real-world windows: "
                            f"{100 * real['precision_when_flagged']:.0f}% precision on flagged windows"

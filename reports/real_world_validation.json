@@ -1,0 +1,23 @@
+{
+  "generated_at": "2026-11-21T22:57:02+00:00",
+  "environment": {
+    "python": "3.11.9",
+    "machine": "AMD64",
+    "os": "Windows",
+    "torch": "2.14.1+cu126",
+    "cuda_device": "NVIDIA GeForce RTX 3060 Laptop GPU"
+  },
+  "labelled_windows": 2,
+  "unsure_excluded": 2,
+  "coordinated_found": 0,
+  "threshold": 0.3479,
+  "precision_when_flagged": null,
+  "flagged_windows": 0,
+  "recall_within_sample": null,
+  "random_sample": {
+    "windows": 0,
+    "coordinated_prevalence": null,
+    "false_alarm_rate": null
+  },
+  "note": "Half the sample is the highest-scored windows, so recall is measured within the labelled sample only."
+}

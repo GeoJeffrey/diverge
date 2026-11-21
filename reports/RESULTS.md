@@ -98,6 +98,17 @@ Walk-forward test 2016-01-04 to 2020-01-08 (5,055 ticker-days). Linear models, r
 | Move size OOS R² (price-only → with social) | 0.125 → 0.177 |
 | 'Bigger move than usual' precision | 49.3% vs base rate 39.2% (1.26x lift) |
 
+## Real-world check of the bot detector (blind hand labels)
+
+2 real 2-hour windows from the live scrapers, labelled without seeing the model's score (half highest-scored, half random; 2 marked unsure and excluded).
+
+| Metric | Value |
+| --- | --- |
+| Precision when flagged | n/a (no flagged windows among the labelled ones) |
+| ROC-AUC on labelled windows | n/a (one class only) |
+| False-alarm rate (random windows) | n/a (0 labelled random windows) |
+| Coordinated share of random windows | n/a (0 labelled random windows) |
+
 ## 5. API performance
 
 2,000 requests per endpoint at concurrency 32 (Windows laptop, single uvicorn worker).
@@ -131,3 +142,4 @@ Each bullet uses only the numbers above. Pick 3-4 and lead with the strongest.
 These results are real and stay in the report, but don't lead with them:
 
 - Direction: 'lean' calls were 52.6% accurate vs 54.0% for always guessing up. Mention as 'calibrated, with live track record', not as a headline.
+- Real-world bot check: too few flagged windows or precision below 70%; report it, don't headline it.
