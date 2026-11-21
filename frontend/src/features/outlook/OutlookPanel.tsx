@@ -41,7 +41,7 @@ export function CoordinationNote({ o }: { o: TickerOutlookResponse }) {
           Coordination risk
         </Term>{" "}
         is {riskFromFlag(o.coordination_flag) === "unknown" ? "not measured yet" : riskFromFlag(o.coordination_flag)}
-        {o.posts_today !== null ? `, from ${o.posts_today.toLocaleString("en-US")} posts on the day` : ""}.
+        {o.posts_today !== null ? `, from ${o.posts_today.toLocaleString("en-US")} ${o.posts_today === 1 ? "post" : "posts"} on the day` : ""}.
       </p>
     </div>
   );
