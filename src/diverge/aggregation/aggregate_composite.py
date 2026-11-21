@@ -56,8 +56,10 @@ def aggregate_composite_row(input_data: Dict[str, Any]) -> Dict[str, Any]:
 
     coordination_score = input_data.get("coordination_score")
     confidence_flag = input_data.get("confidence_flag", "insufficient_data")
-    if confidence_flag is None:
-        confidence_flag = "high_trust" if (rn is not None or cassi is not None or vdi is not None) else "insufficient_data"
+    # No coordination measurement (None): nothing to dampen, so intensity is computed undampened,
+    # but the window is NOT labelled as trusted -- it stays unmeasured.
+    dampen_flag = "high_trust" if confidence_flag is None else confidence_flag
+    reading_confidence = "insufficient_data" if confidence_flag is None else confidence_flag
 
     # ── Step a: Normalize core narrative inputs (-1..1) ─────────────────
     rn_norm = math.tanh(2.0 * (rn - 1.0)) if (rn is not None) else None
@@ -124,7 +126,7 @@ def aggregate_composite_row(input_data: Dict[str, Any]) -> Dict[str, Any]:
 
     # ── Step d: Map to 0-100 & Dampen by confidence_flag ───────────────
     # If confidence_flag is 'insufficient_data', force composite_score = None
-    if confidence_flag == "insufficient_data":
+    if dampen_flag == "insufficient_data":
         composite_score = None
     else:
         raw_0_100 = 50.0 + 50.0 * max(-1.0, min(1.0, core))
@@ -134,7 +136,7 @@ def aggregate_composite_row(input_data: Dict[str, Any]) -> Dict[str, Any]:
             "low_trust": 0.4,
             "insufficient_data": 0.0,
         }
-        multiplier = multiplier_map.get(confidence_flag, 1.0)
+        multiplier = multiplier_map.get(dampen_flag, 1.0)
         composite_score = round(50.0 + (raw_0_100 - 50.0) * multiplier, 1)
 
     return {
@@ -152,5 +154,5 @@ def aggregate_composite_row(input_data: Dict[str, Any]) -> Dict[str, Any]:
         "composite_score": composite_score,
         "dominant_index": dominant_index,
         "risk_flags": json.dumps(risk_flags),
-        "aggregation_confidence": confidence_flag,
+        "aggregation_confidence": reading_confidence,
     }
