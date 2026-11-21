@@ -13,11 +13,23 @@ data exists. Returns a per-phase status dict.
 
 import time
 from pathlib import Path
-from typing import Callable, Dict
+from typing import Callable, Dict, List
 
 from . import config, storage, utils
 
 logger = utils.setup_logger("pipeline")
+
+# Phases whose failure means the run produced nothing usable for the dashboard. Ingest is not
+# critical: each scraper is already isolated, and a blocked source must not fail a scheduled run.
+CRITICAL_PHASES = ("2_features", "7_outlook", "8_publish")
+
+
+def failed_phases(status: Dict[str, str], fail_on: str = "any") -> List[str]:
+    """Phases that should make the run exit non-zero. fail_on: 'any' or 'critical'."""
+    if fail_on not in ("any", "critical"):
+        raise ValueError(f"fail_on must be 'any' or 'critical', not {fail_on!r}")
+    failed = [p for p, s in status.items() if s.startswith("failed")]
+    return failed if fail_on == "any" else [p for p in failed if p in CRITICAL_PHASES]
 
 
 def _phases(db_path: Path, skip_scrape: bool) -> Dict[str, Callable[[], object]]:

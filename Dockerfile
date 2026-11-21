@@ -25,7 +25,7 @@ COPY docs/ ./docs/
 COPY migrations/ ./migrations/
 COPY alembic.ini run_server.py ./
 
-# Expose port (default 8000; dynamically overridden by Railway's $PORT)
+# Expose port (default 8000; overridden by the platform's $PORT)
 EXPOSE 8000
 
 # Default command: run migrations and launch uvicorn via run_server.py

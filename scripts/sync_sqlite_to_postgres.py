@@ -5,11 +5,10 @@ Copies ticker_window_metrics (and related tables) from local SQLite
 into the production PostgreSQL database via SQLAlchemy.
 
 Usage:
-  # Set DATABASE_URL to Railway Postgres, then:
+  # Set DATABASE_URL to the production Postgres (Neon) in your terminal only, then:
   python scripts/sync_sqlite_to_postgres.py
-  
-  # Or via Railway CLI:
-  railway run python scripts/sync_sqlite_to_postgres.py
+
+Prefer `python -m diverge.publish --full`, which the pipeline uses and which keeps foreign keys intact.
 """
 
 import os
@@ -21,7 +20,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 # Credentials are never hard-coded: DATABASE_URL must come from the environment
-# (e.g. `railway run python scripts/sync_sqlite_to_postgres.py`).
+# (set it in the terminal session only; never write it to a file).
 if not os.environ.get("DATABASE_URL"):
     sys.exit("ERROR: set DATABASE_URL to the target PostgreSQL instance first.")
 

@@ -1,0 +1,24 @@
+# Slim API image (no PyTorch / transformers / scrapers) for Render's free tier.
+# The pipeline runs elsewhere (GitHub Actions) and publishes into the same PostgreSQL database.
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONPATH="/app/src"
+
+WORKDIR /app
+
+# psycopg2-binary and bcrypt ship manylinux wheels, so no compiler or libpq-dev is needed.
+COPY requirements-api.txt ./
+RUN pip install -r requirements-api.txt
+
+COPY src/ ./src/
+COPY migrations/ ./migrations/
+COPY alembic.ini run_server.py ./
+COPY docs/openapi.json ./docs/openapi.json
+
+EXPOSE 8000
+
+# Apply migrations, then serve. Render injects $PORT.
+CMD ["sh", "-c", "alembic upgrade head && python run_server.py --host 0.0.0.0 --port ${PORT:-8000}"]

@@ -1,4 +1,15 @@
+import { useEffect, useState } from "react";
+
+// The API runs on a free Render instance that sleeps when idle; waking it takes ~30-60 s.
+const SLOW_LOAD_MS = 4000;
+
 export function LoadingState({ label = "Loading…" }: { label?: string }) {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSlow(true), SLOW_LOAD_MS);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   return (
     <div className="px-7 py-10" role="status" aria-live="polite">
       <div className="h-6 w-40 animate-pulse rounded bg-[#e0dbd4]" />
@@ -7,6 +18,9 @@ export function LoadingState({ label = "Loading…" }: { label?: string }) {
         <div className="h-32 animate-pulse rounded-xl bg-[#e0dbd4]" />
       </div>
       <p className="mt-4 text-sm text-[#7a5040]">{label}</p>
+      {slow && (
+        <p className="mt-1 text-sm text-[#7a5040]">Waking up the free server, this can take up to a minute…</p>
+      )}
     </div>
   );
 }

@@ -1,0 +1,17 @@
+# Keep the build context small: none of these are needed inside an image.
+.git
+.github
+.venv
+venv
+.cache
+models
+data
+reports
+frontend/node_modules
+frontend/dist
+**/__pycache__
+**/*.pyc
+*.db
+.env
+.env.*
+.pytest_cache
