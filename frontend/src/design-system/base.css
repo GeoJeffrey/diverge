@@ -1,0 +1,114 @@
+@import "./tokens.css";
+@import "tailwindcss";
+
+/* Tailwind reads the tokens, so utilities follow the active theme. */
+@theme inline {
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --color-bg: var(--bg);
+  --color-raise: var(--raise);
+  --color-sunk: var(--sunk);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-edge: var(--edge);
+  --color-text: var(--text);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-up: var(--up);
+  --color-up-soft: var(--up-soft);
+  --color-down: var(--down);
+  --color-down-soft: var(--down-soft);
+  --color-mark: var(--mark);
+}
+
+/* Element defaults live in the base layer so Tailwind utilities can always override them. */
+@layer base {
+html {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 100%;
+  font-optical-sizing: auto; /* Inter switches to its Display cut at large sizes */
+  font-feature-settings: "cv11", "ss01"; /* single-storey a, open digits */
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--bg);
+  font-size: var(--fs-md);
+  line-height: 1.6;
+}
+
+* { box-sizing: border-box; }
+
+a { color: inherit; }
+
+::selection { background: var(--mark); color: var(--bg); }
+
+:focus-visible {
+  outline: 2px solid var(--mark);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+}
+
+/* ── type roles ─────────────────────────────────────────────────────────────── */
+.t-display {
+  font-size: clamp(2.375rem, 1.2rem + 4.6vw, var(--fs-5xl));
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  font-weight: 620;
+  text-wrap: balance;
+}
+.t-h1 { font-size: clamp(1.75rem, 1.2rem + 2vw, var(--fs-3xl)); line-height: 1.1; letter-spacing: -0.025em; font-weight: 620; text-wrap: balance; }
+.t-h2 { font-size: var(--fs-2xl); line-height: 1.15; letter-spacing: -0.02em; font-weight: 600; text-wrap: balance; }
+.t-h3 { font-size: var(--fs-lg); line-height: 1.3; letter-spacing: -0.01em; font-weight: 600; }
+.t-lead { font-size: var(--fs-lg); line-height: 1.55; color: var(--text-2); max-width: var(--measure); }
+.t-body { font-size: var(--fs-md); line-height: 1.6; color: var(--text-2); max-width: var(--measure); }
+.t-small { font-size: var(--fs-sm); line-height: 1.5; color: var(--text-3); }
+.t-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.t-sym { font-family: var(--font-mono); font-weight: 600; letter-spacing: 0; }
+
+/* ── layout ─────────────────────────────────────────────────────────────────── */
+.page { width: 100%; max-width: var(--page); margin-inline: auto; padding-inline: var(--s4); }
+@media (min-width: 768px) { .page { padding-inline: var(--s6); } }
+
+.rule { border: 0; border-top: 1px solid var(--line); margin: 0; }
+
+/* Hatching = "not real / not available". Used for demo data and missing readings only. */
+.hatch {
+  background-image: repeating-linear-gradient(135deg, var(--hatch) 0 1px, transparent 1px 7px);
+}
+
+/* ── motion ─────────────────────────────────────────────────────────────────── */
+@keyframes draw { from { stroke-dashoffset: var(--len); } to { stroke-dashoffset: 0; } }
+@keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes pulse-soft { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+
+.skeleton { background: var(--sunk); border-radius: var(--r-panel); animation: pulse-soft 1.6s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── accessibility helpers ──────────────────────────────────────────────────── */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+.skip-link {
+  position: absolute; left: var(--s3); top: var(--s3); z-index: 100;
+  transform: translateY(-200%);
+  background: var(--text); color: var(--bg);
+  padding: var(--s2) var(--s3); border-radius: var(--r-control); font-weight: 600;
+}
+.skip-link:focus { transform: none; }

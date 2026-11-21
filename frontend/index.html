@@ -3,14 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Diverge — Narrative intelligence</title>
+    <title>Diverge: next-day outlooks from market chatter</title>
     <meta
       name="description"
-      content="Plain-language and advanced narrative analysis for tracked equities."
+      content="Diverge reads public posts about 16 stocks, discounts bot-driven buzz, and gives each a next-day outlook with its reasons and its measured track record."
     />
+    <meta name="color-scheme" content="dark light" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <script>
+      // Apply a saved theme before first paint (no flash). Unset = follow the system.
+      try {
+        var t = localStorage.getItem("diverge.theme");
+        if (t === "ink" || t === "paper") document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    </script>
   </head>
   <body>
-    <a class="skip-link" href="#main">Skip to content</a>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

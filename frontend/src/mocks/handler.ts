@@ -13,6 +13,7 @@ import {
   issueTokens,
   mockUsers,
   reasoningBySymbol,
+  simpleFor,
   tickerList,
 } from "./fixtures";
 
@@ -140,7 +141,7 @@ export async function mockRequest(method: string, url: string, body?: unknown, a
   const simpleMatch = pathname.match(/^\/ticker\/([^/]+)\/simple$/);
   if (m === "GET" && simpleMatch) {
     const symbol = decodeURIComponent(simpleMatch[1]).toUpperCase();
-    const data = tickerList.find((t) => t.symbol === symbol);
+    const data = simpleFor(symbol);
     if (!data) return jsonError(404, "NOT_FOUND", `Ticker or requested metric window not found.`);
     return { status: 200, body: window ? { ...data, window_start_utc: window } : data };
   }
