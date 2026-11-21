@@ -147,16 +147,19 @@ export default function MarketPage() {
             Every tracked stock with its next-day call, the move to expect, how loud the conversation is and how likely it
             is to be coordinated.
           </p>
-          {loading ? (
-            <Skeleton className="mt-3 h-5 w-2/3" label="Loading outlooks" />
-          ) : outlooks.isError ? null : (
-            <p className="mt-3 text-[0.9375rem] text-text">
-              {available.length} of {outlooks.data?.total ?? rows.length} names have a call{day ? ` for after the ${dayLabel(day)} close` : ""}.{" "}
-              {leaning === 0
-                ? "None leans clearly; all are close to a coin flip."
-                : `${leaning} ${leaning === 1 ? "leans" : "lean"} one way; the rest are close to a coin flip.`}
-            </p>
-          )}
+          {/* Reserves the summary's height (3 lines on phones, 2 on wide screens) so it doesn't push the page down. */}
+          <div className="mt-3 min-h-[4.5rem] lg:min-h-[3rem]">
+            {loading ? (
+              <Skeleton className="h-5 w-2/3" label="Loading outlooks" />
+            ) : outlooks.isError ? null : (
+              <p className="text-[0.9375rem] text-text">
+                {available.length} of {outlooks.data?.total ?? rows.length} names have a call{day ? ` for after the ${dayLabel(day)} close` : ""}.{" "}
+                {leaning === 0
+                  ? "None leans clearly; all are close to a coin flip."
+                  : `${leaning} ${leaning === 1 ? "leans" : "lean"} one way; the rest are close to a coin flip.`}
+              </p>
+            )}
+          </div>
         </div>
         <p className="t-small lg:text-right">
           Direction calls are close to chance. <TextLink to="/model">See the track record</TextLink>
