@@ -26,7 +26,7 @@ const FEATURES = [
   },
   {
     title: "Trust, not a second score",
-    desc: "Trust Score sits on a separate visual language from narrative strength. It tells you whether the conversation looks coordinated — not whether it is bullish.",
+    desc: "Coordination risk sits on a separate visual language from narrative strength. It tells you whether the conversation looks coordinated — not whether it is bullish.",
     color: "#3d4a66",
   },
   {
@@ -172,7 +172,7 @@ export default function Landing() {
             {[
               { n: "01", title: "Ingest", desc: "Posts and filings land in a window. Nothing is shown as a score until coverage rules are met." },
               { n: "02", title: "Read", desc: "Each index either publishes a number or an explicit coverage note — never a blank card." },
-              { n: "03", title: "Judge trust separately", desc: "Coordination and duplication inform Trust Score, kept visually distinct from narrative strength." },
+              { n: "03", title: "Judge trust separately", desc: "Coordination and duplication inform Coordination risk, kept visually distinct from narrative strength." },
               { n: "04", title: "Explain", desc: "Why this score groups source evidence so you can audit the reading, not just consume it." },
             ].map((s) => (
               <li key={s.n} className="flex gap-5">

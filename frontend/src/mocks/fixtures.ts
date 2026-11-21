@@ -4,8 +4,10 @@ import type {
   HealthResponse,
   IndexMetricValue,
   IndicesBreakdown,
+  OutlookModelResponse,
   ReasoningTraceResponse,
   TickerAdvancedResponse,
+  TickerOutlookResponse,
   TickerSimpleItem,
   UserProfileResponse,
 } from "@/types/api";
@@ -34,7 +36,7 @@ function indices(partial: Partial<IndicesBreakdown>): IndicesBreakdown {
 
 function trust(score: number, flag: CoordinationMetric["confidence_flag"]): CoordinationMetric {
   return {
-    label: "Trust Score",
+    label: "Coordination risk",
     coordination_score: score,
     confidence_flag: flag,
     available: true,
@@ -485,7 +487,7 @@ export const advancedBySymbol: Record<string, TickerAdvancedResponse> = {
       ),
     },
     coordination: {
-      label: "Trust Score",
+      label: "Coordination risk",
       coordination_score: 0,
       confidence_flag: "insufficient_data",
       available: false,
@@ -583,3 +585,66 @@ export function issueTokens(userId: string): AuthTokenResponse {
     expires_in: 3600,
   };
 }
+
+
+// ── Next-day outlook (demo mode only; the live API serves model output) ──
+
+const DEMO_DISCLAIMER =
+  "Demo data. In live mode this is a statistical estimate from public social-media data and prices, with its historical accuracy shown alongside. Not investment advice.";
+
+function demoOutlook(
+  symbol: string,
+  name: string,
+  prob_up: number,
+  move: TickerOutlookResponse["move_label"],
+  expected: number,
+  typical: number,
+  dampened = false,
+): TickerOutlookResponse {
+  const edge = Math.abs(prob_up - 0.5);
+  return {
+    symbol,
+    name,
+    available: true,
+    coverage_note: null,
+    as_of_day: "2026-11-20",
+    prob_up,
+    lean: edge < 0.02 ? "neutral" : prob_up > 0.5 ? "up" : "down",
+    lean_strength: edge >= 0.05 ? "lean" : edge >= 0.02 ? "slight" : "none",
+    expected_move_pct: expected,
+    typical_move_pct: typical,
+    move_label: move,
+    direction_drivers: [
+      { feature: "sentiment_z", label: "Sentiment shift vs usual", kind: "narrative", contribution: prob_up > 0.5 ? 0.11 : -0.09, pushes: prob_up > 0.5 ? "up" : "down" },
+      { feature: "ret_5", label: "5-day price momentum", kind: "price", contribution: -0.04, pushes: "down" },
+      { feature: "new_author_share", label: "New voices joining", kind: "narrative", contribution: 0.03, pushes: "up" },
+    ],
+    move_drivers: [
+      { feature: "volume_z", label: "Attention spike vs usual", kind: "narrative", contribution: 0.0021, pushes: "up" },
+      { feature: "abs_ret_5", label: "Recent volatility (5 days)", kind: "price", contribution: 0.0018, pushes: "up" },
+    ],
+    coordination_flag: dampened ? "low_trust" : "high_trust",
+    coordination_dampened: dampened,
+    posts_today: 120,
+    model_version: "demo",
+    generated_at: "2026-11-20T12:00:00Z",
+    disclaimer: DEMO_DISCLAIMER,
+  };
+}
+
+export const demoOutlooks: TickerOutlookResponse[] = [
+  demoOutlook("INFY", "Infosys Ltd.", 0.56, "typical", 1.4, 1.3),
+  demoOutlook("TCS", "Tata Consultancy Services", 0.48, "smaller_than_usual", 0.9, 1.2),
+  demoOutlook("RELIANCE", "Reliance Industries", 0.53, "larger_than_usual", 2.1, 1.4, true),
+  demoOutlook("TATASTEEL", "Tata Steel", 0.44, "larger_than_usual", 2.8, 2.0),
+];
+
+export const demoOutlookModel: OutlookModelResponse = {
+  available: true,
+  version: "demo",
+  trained_at: "2026-11-20T00:00:00Z",
+  training_data: { source: "demo fixtures", sentiment_model: "demo", ticker_days: 0, first_day: "", last_day: "" },
+  track_record: {},
+  features: [],
+  disclaimer: DEMO_DISCLAIMER,
+};

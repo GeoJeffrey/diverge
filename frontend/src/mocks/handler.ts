@@ -7,6 +7,8 @@ import type {
 } from "@/types/api";
 import {
   advancedBySymbol,
+  demoOutlookModel,
+  demoOutlooks,
   health,
   issueTokens,
   mockUsers,
@@ -101,6 +103,30 @@ export async function mockRequest(method: string, url: string, body?: unknown, a
 
   if (m === "GET" && pathname === "/tickers") {
     return { status: 200, body: { total: tickerList.length, tickers: tickerList } };
+  }
+
+  if (m === "GET" && pathname === "/outlook") {
+    return { status: 200, body: { total: demoOutlooks.length, outlooks: demoOutlooks } };
+  }
+
+  if (m === "GET" && pathname === "/outlook/model") {
+    return { status: 200, body: demoOutlookModel };
+  }
+
+  const outlookMatch = pathname.match(/^\/ticker\/([^/]+)\/outlook$/);
+  if (m === "GET" && outlookMatch) {
+    const symbol = decodeURIComponent(outlookMatch[1]).toUpperCase();
+    const hit = demoOutlooks.find((o) => o.symbol === symbol);
+    return {
+      status: 200,
+      body: hit ?? {
+        symbol, name: symbol, available: false, coverage_note: "No outlook has been computed for this ticker yet.",
+        as_of_day: null, prob_up: null, lean: null, lean_strength: null, expected_move_pct: null,
+        typical_move_pct: null, move_label: null, direction_drivers: [], move_drivers: [],
+        coordination_flag: null, coordination_dampened: false, posts_today: null, model_version: null,
+        generated_at: null, disclaimer: demoOutlookModel.disclaimer,
+      },
+    };
   }
 
   const tickerMatch = pathname.match(/^\/ticker\/([^/]+)$/);
