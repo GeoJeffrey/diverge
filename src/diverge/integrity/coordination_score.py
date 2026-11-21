@@ -18,11 +18,21 @@ on real news reactions. Logs this adjustment explicitly for auditability.
 GUARD:
 If < 20 posts in window -> confidence_flag = 'insufficient_data' and score = 0.0.
 
-CLASSIFICATION:
+CLASSIFICATION (method="heuristic", the original hand-weighted score):
   - coordination_score >= 70 -> 'low_trust'
   - coordination_score 40-69 -> 'moderate'
   - coordination_score < 40  -> 'high_trust'
+
+LEARNED SCORER (method="learned", default when learned_coordination_weights.json exists):
+  The same components feed a logistic-regression model fitted by
+  diverge.evaluation.coordination_benchmark on labelled simulated windows. The hand-weighted
+  score ranked campaigns poorly (see reports/RESULTS.md), so the pipeline uses the learned
+  probability: coordination_score = 100 * P(coordinated); 'low_trust' at or above the model's
+  F1-optimal threshold, 'moderate' above half of it.
 """
+
+import json
+import math
 
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -33,6 +43,27 @@ from . import duplicate_detection, sentiment_variance
 logger = utils.setup_logger("coordination_score")
 
 MIN_POSTS_FOR_TRUST = 20
+WEIGHTS_PATH = Path(__file__).resolve().parent / "learned_coordination_weights.json"
+_weights_cache: Dict[str, Any] = {}
+
+
+def load_learned_weights(path: Path = WEIGHTS_PATH) -> Optional[Dict[str, Any]]:
+    if "w" not in _weights_cache:
+        _weights_cache["w"] = json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+    return _weights_cache["w"]
+
+
+def learned_probability(features: Dict[str, float], weights: Dict[str, Any]) -> float:
+    """
+    Standardise -> linear -> sigmoid, as sklearn's StandardScaler + LogisticRegression.
+    Standardised inputs are clipped to +/-5 sd so values far outside the training range
+    cannot dominate the score.
+    """
+    z = weights["intercept"]
+    for name, mu, sd, c in zip(weights["features"], weights["mean"], weights["scale"], weights["coef"]):
+        x = (float(features.get(name, 0.0)) - mu) / (sd or 1.0)
+        z += c * max(-5.0, min(5.0, x))
+    return 1.0 / (1.0 + math.exp(-z))
 
 
 def normalize_01(val: Optional[float], default_max: float = 1.0) -> float:
@@ -52,9 +83,12 @@ def calculate_coordination_score(
     news_event_present: bool = False,
     ticker: str = "",
     window_start: str = "",
+    method: str = "auto",
 ) -> Dict[str, Any]:
     """
     Calculate 0-100 coordination score and assign confidence_flag.
+    method: "heuristic" (hand-weighted), "learned" (trained logistic model) or
+    "auto" (learned when the weights file is present, else heuristic).
     """
     # Guard check for insufficient data
     if total_posts < MIN_POSTS_FOR_TRUST:
@@ -76,6 +110,34 @@ def calculate_coordination_score(
 
     norm_var = sentiment_variance.normalize_sentiment_variance(sentiment_var)
     inv_var_comp = max(0.0, min(1.0, 1.0 - norm_var))
+
+    weights = load_learned_weights() if method in ("auto", "learned") else None
+    if method == "learned" and weights is None:
+        raise FileNotFoundError(f"No learned weights at {WEIGHTS_PATH}; run the coordination benchmark.")
+    if weights is not None:
+        prob = learned_probability(
+            {
+                "ks": ks_stat or 0.0,
+                "acf": acf_strength or 0.0,
+                "onset_dispersion": onset_dispersion or 0.0,
+                "duplicate_ratio": dup_comp,
+                "sentiment_variance": float(sentiment_var),
+                "news_event": float(news_event_present),
+                "log_posts": math.log1p(total_posts),
+            },
+            weights,
+        )
+        thr = weights["threshold"]
+        flag = "low_trust" if prob >= thr else ("moderate" if prob >= thr / 2 else "high_trust")
+        return {
+            "ks_component": round(ks_comp, 4),
+            "acf_component": round(acf_comp, 4),
+            "onset_component": round(onset_comp, 4),
+            "duplicate_ratio": round(dup_comp, 4),
+            "sentiment_variance": round(sentiment_var, 4),
+            "coordination_score": round(100.0 * prob, 2),
+            "confidence_flag": flag,
+        }
 
     # Weighting logic with news dampening
     if news_event_present:

@@ -54,6 +54,7 @@ class TestPhase4IntegrityScoring(unittest.TestCase):
     def test_coordination_score_organic_vs_manipulated(self):
         # Organic Case: low KS, low ACF, low dispersion, 0 duplicates, high sentiment variance -> high_trust (< 40)
         res_organic = coordination_score.calculate_coordination_score(
+            method="heuristic",
             ks_stat=0.10,
             acf_strength=0.10,
             onset_dispersion=0.10,
@@ -67,6 +68,7 @@ class TestPhase4IntegrityScoring(unittest.TestCase):
 
         # Manipulated Case: high KS, high ACF, high dispersion, 80% duplicates, near-zero sentiment variance -> low_trust (>= 70)
         res_manipulated = coordination_score.calculate_coordination_score(
+            method="heuristic",
             ks_stat=0.95,
             acf_strength=0.95,
             onset_dispersion=0.95,
@@ -81,6 +83,7 @@ class TestPhase4IntegrityScoring(unittest.TestCase):
     def test_coordination_insufficient_data_guard(self):
         # < 20 posts guard check
         res_small = coordination_score.calculate_coordination_score(
+            method="heuristic",
             ks_stat=0.90,
             acf_strength=0.90,
             onset_dispersion=0.90,
@@ -94,6 +97,7 @@ class TestPhase4IntegrityScoring(unittest.TestCase):
     def test_news_event_dampening(self):
         # High onset dispersion due to news event should yield a lower score than un-dampened onset
         res_normal = coordination_score.calculate_coordination_score(
+            method="heuristic",
             ks_stat=0.20,
             acf_strength=0.20,
             onset_dispersion=0.95,  # high onset spike
@@ -103,6 +107,7 @@ class TestPhase4IntegrityScoring(unittest.TestCase):
             news_event_present=False,
         )
         res_dampened = coordination_score.calculate_coordination_score(
+            method="heuristic",
             ks_stat=0.20,
             acf_strength=0.20,
             onset_dispersion=0.95,  # high onset spike
@@ -120,3 +125,18 @@ if __name__ == "__main__":
     unittest.main()
 
 
+
+
+class TestLearnedScorer(unittest.TestCase):
+    def test_learned_weights_ship_with_package_and_rank_campaigns_higher(self):
+        weights = coordination_score.load_learned_weights()
+        self.assertIsNotNone(weights, "run python -m diverge.evaluation.coordination_benchmark")
+        organic = coordination_score.calculate_coordination_score(
+            ks_stat=0.08, acf_strength=0.2, onset_dispersion=1.0, duplicate_ratio=0.0,
+            sentiment_var=0.2, total_posts=120, method="learned")
+        campaign = coordination_score.calculate_coordination_score(
+            ks_stat=0.2, acf_strength=0.5, onset_dispersion=2.0, duplicate_ratio=0.4,
+            sentiment_var=0.02, total_posts=120, method="learned")
+        self.assertGreater(campaign["coordination_score"], organic["coordination_score"])
+        self.assertEqual(campaign["confidence_flag"], "low_trust")
+        self.assertEqual(organic["confidence_flag"], "high_trust")

@@ -1,15 +1,15 @@
 """
-seed_production.py
+sync_sqlite_to_postgres.py
 
 Copies ticker_window_metrics (and related tables) from local SQLite
 into the production PostgreSQL database via SQLAlchemy.
 
 Usage:
   # Set DATABASE_URL to Railway Postgres, then:
-  python seed_production.py
+  python scripts/sync_sqlite_to_postgres.py
   
   # Or via Railway CLI:
-  railway run python seed_production.py
+  railway run python scripts/sync_sqlite_to_postgres.py
 """
 
 import os
@@ -21,7 +21,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 # Credentials are never hard-coded: DATABASE_URL must come from the environment
-# (e.g. `railway run python seed_production.py`).
+# (e.g. `railway run python scripts/sync_sqlite_to_postgres.py`).
 if not os.environ.get("DATABASE_URL"):
     sys.exit("ERROR: set DATABASE_URL to the target PostgreSQL instance first.")
 

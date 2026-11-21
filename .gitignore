@@ -29,3 +29,8 @@ env/
 
 # Data directory (raw scraped data)
 data/
+
+# Trained model weights (re-create with python -m diverge.evaluation.finetune_sentiment)
+models/
+# Evaluation caches
+.cache/

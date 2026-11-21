@@ -127,24 +127,37 @@ HINDI_ROMAN_MARKERS = re.compile(
 _sentiment_pipeline = None
 
 
+def sentiment_model_path() -> str:
+    """Fine-tuned tweet model if it has been trained (see evaluation/finetune_sentiment.py), else FinBERT."""
+    import os
+
+    env = os.environ.get("DIVERGE_SENTIMENT_MODEL")
+    if env:
+        return env
+    finetuned = config.BASE_DIR / "models" / "finbert-tweets"
+    return str(finetuned) if finetuned.exists() else "ProsusAI/finbert"
+
+
 def _load_sentiment_model():
-    """Load FinBERT sentiment model once. Falls back gracefully if offline/unavailable."""
+    """Load the sentiment model once. Falls back to the keyword lexicon if offline/unavailable."""
     global _sentiment_pipeline
     if _sentiment_pipeline is not None:
         return _sentiment_pipeline
     try:
         from transformers import pipeline as hf_pipeline
-        logger.info("Loading FinBERT sentiment model (ProsusAI/finbert)...")
+
+        path = sentiment_model_path()
+        logger.info(f"Loading sentiment model ({path})...")
         _sentiment_pipeline = hf_pipeline(
             "text-classification",
-            model="ProsusAI/finbert",
-            tokenizer="ProsusAI/finbert",
+            model=path,
+            tokenizer=path,
             truncation=True,
             max_length=512,
         )
-        logger.info("FinBERT model loaded.")
+        logger.info("Sentiment model loaded.")
     except Exception as e:
-        logger.warning(f"Could not load FinBERT ({e}). Falling back to keyword-based sentiment.")
+        logger.warning(f"Could not load sentiment model ({e}). Falling back to keyword-based sentiment.")
         _sentiment_pipeline = None
     return _sentiment_pipeline
 
