@@ -169,7 +169,7 @@ def _build_simple_item(row: Dict[str, Any], symbol: str) -> TickerSimpleItem:
         score=round(float(score), 1) if score is not None else None,
         verdict_label=_build_verdict_label(score),
         why_sentence=_build_why_sentence(dom_index, row, risk_flags),
-        trust_label=TRUST_LABEL_MAP.get(conf_flag, "Moderate confidence - treat with caution"),
+        trust_label=TRUST_LABEL_MAP.get(conf_flag, TRUST_LABEL_MAP["insufficient_data"]),
         window_start_utc=row.get("window_start_utc", ""),
     )
 

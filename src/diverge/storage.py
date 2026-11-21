@@ -850,7 +850,8 @@ def get_index_values_and_coordination_for_window(
     conn = get_connection(db_path)
     conn.row_factory = sqlite3.Row
 
-    # Outer join approach to get all windows present in index_values OR coordination_scores
+    # Coordination: the window's own measurement, else the ticker's latest real measurement, else NULL.
+    # Never a placeholder: an unmeasured window must stay unmeasured all the way to the API.
     query = """
         SELECT
             iv.ticker AS ticker,
@@ -869,8 +870,7 @@ def get_index_values_and_coordination_for_window(
                  WHERE cs_recent.ticker = iv.ticker 
                    AND cs_recent.coordination_score IS NOT NULL 
                    AND cs_recent.coordination_score > 0
-                 ORDER BY cs_recent.window_start_utc DESC LIMIT 1),
-                32.5
+                 ORDER BY cs_recent.window_start_utc DESC LIMIT 1)
             ) AS coordination_score,
             COALESCE(
                 cs_exact.confidence_flag,
@@ -879,8 +879,7 @@ def get_index_values_and_coordination_for_window(
                  WHERE cs_recent.ticker = iv.ticker 
                    AND cs_recent.confidence_flag IS NOT NULL 
                    AND cs_recent.confidence_flag != 'insufficient_data'
-                 ORDER BY cs_recent.window_start_utc DESC LIMIT 1),
-                'high_trust'
+                 ORDER BY cs_recent.window_start_utc DESC LIMIT 1)
             ) AS confidence_flag
         FROM index_values iv
         LEFT JOIN coordination_scores cs_exact
