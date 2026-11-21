@@ -12,9 +12,11 @@ flowchart LR
     RAW --> TM[Timing features<br/>inter-arrival, first mentions,<br/>5-min bins]
     TF & TM --> IDX[Narrative indices<br/>Rn, CLI, VDI, CIRG, CASSI]
     TF & TM --> INT[Integrity layer<br/>MinHash-LSH duplicates, KS/ACF timing,<br/>learned coordination scorer]
-    IDX & INT --> AGG[Composite score<br/>trust-dampened]
+    TF & TM & IDX & INT --> OUT[Next-day outlook<br/>logistic + ridge, per-feature drivers,<br/>coordination dampening]
+    IDX & INT --> AGG[Narrative intensity<br/>trust-dampened]
     AGG --> EXP[Explainability<br/>reasoning traces, duplicate lineage,<br/>narrative phylogeny]
-    EXP --> API[FastAPI + JWT<br/>PostgreSQL / SQLite]
+    EXP & OUT --> PUB[Publish<br/>SQLite working store → PostgreSQL]
+    PUB --> API[FastAPI + JWT]
     API --> UI[React dashboard]
     EVAL[[Evaluation suite<br/>benchmarks + walk-forward backtest]] -.validates.-> TF & INT & IDX
 ```
@@ -25,7 +27,9 @@ flowchart LR
 | Features | `features/` | Sentiment uses `models/finbert-tweets` when trained, else `ProsusAI/finbert`, else a keyword lexicon (offline). |
 | Indices | `indices/` | Every index returns a value **or `None`**. No synthetic floors or proxy fallbacks. |
 | Integrity | `integrity/` | Coordination probability from a logistic model trained by `evaluation/coordination_benchmark.py`. |
-| Aggregation | `aggregation/` | Pure function; CIRG/CLI can only pull the composite down; low trust dampens toward neutral. |
+| Aggregation | `aggregation/` | "Narrative intensity": how strong the conversation is, *not* its direction. CIRG/CLI can only pull it down; low trust dampens toward neutral. |
+| Outlook | `outlook/` | Next-day P(up) and expected move from the same feature code used in training (`outlook/features.py`). Explained by per-feature contributions, shrunk toward 50/50 when coordination risk is high (×0.5 low trust, ×0.75 moderate). |
+| Publish | `publish.py` | Upserts new rows from the worker's SQLite store into the API's PostgreSQL. |
 | Explainability | `explainability/` | Per-post contribution traces and window-to-window narrative evolution. |
 | Serving | `api/`, `frontend/` | FastAPI (OpenAPI contract in `docs/openapi.json`), Alembic migrations, React + Vite. |
 | Evaluation | `evaluation/` | Reproduces every number in `reports/RESULTS.md`. |
@@ -45,11 +49,13 @@ flowchart LR
 
 1. **Sentiment.** Public labelled finance tweets (`zeroshot/twitter-financial-news-sentiment`). The official validation split is the test set. Fine-tuning model selection uses a 10% split of *train*.
 2. **Coordination.** No public labelled dataset of stock-promotion campaigns exists. So campaigns with known ground truth are injected into simulated organic traffic. The simulation includes hard negatives (news bursts with shared headlines), and post volume is matched across classes so volume alone can't reveal the label. The original hand-weighted score is kept as the baseline.
-3. **Predictive value.** Daily features from ~1.7M tweets (2015-2019) predict next-day |return| and excess-return direction. Expanding-window walk-forward by year; price-only baselines (HAR volatility, momentum). Diebold-Mariano test on forecast errors. Synthetic-data tests show that the harness detects a planted signal and does **not** find one in pure noise, which checks for look-ahead leakage.
+3. **Next-day outlook.** `train_outlook.py` uses the same walk-forward protocol and records accuracy vs the always-up baseline, calibration, accuracy per call strength ("leans" / "slight lean" / no call) and move-size precision. These are served by `/outlook/model` and shown next to every prediction.
+4. **Predictive value.** Daily features from ~1.7M tweets (2015-2019) predict next-day |return| and excess-return direction. Expanding-window walk-forward by year; price-only baselines (HAR volatility, momentum). Diebold-Mariano test on forecast errors. Synthetic-data tests show that the harness detects a planted signal and does **not** find one in pure noise, which checks for look-ahead leakage.
 
 ## Known limitations
 
 - The coordination detector's training data is simulated. Real-world precision has to be confirmed on hand-labelled windows. `fpr_on_news_bursts` in the results is the main failure mode.
 - Sarcasm and capitulation detection are rule-based heuristics.
 - The tweet backtest covers 5 US mega-caps. Results may not transfer to the Indian tickers the live scrapers track until enough history has been collected (`--source db`).
-- Direction prediction for liquid large caps is near chance; the project does not claim tradeable alpha.
+- Direction prediction for liquid large caps is near chance; the project does not claim tradeable alpha. The outlook shows its historical accuracy next to every call for this reason.
+- The outlook model is trained on US large caps and applied live to NSE and US tickers, so live accuracy can differ from the recorded track record.

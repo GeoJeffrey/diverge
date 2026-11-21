@@ -76,18 +76,11 @@ def load_tweets(limit: Optional[int] = None) -> pd.DataFrame:
 
 
 def load_db_posts() -> pd.DataFrame:
+    """Social posts collected by this project's scrapers, with their pipeline sentiment labels."""
     from .. import config, storage
+    from ..outlook.run_outlook import posts_frame
 
-    conn = storage.get_connection(config.DB_PATH)
-    df = pd.read_sql_query("SELECT ticker, account_id, timestamp_utc, raw_text FROM raw_posts", conn)
-    conn.close()
-    return pd.DataFrame({
-        "ticker": df["ticker"],
-        "author": df["account_id"].fillna("unknown"),
-        "date": pd.to_datetime(df["timestamp_utc"], utc=True).dt.tz_localize(None).dt.normalize(),
-        "text": df["raw_text"].fillna(""),
-        "engagement": 0,
-    })
+    return posts_frame(storage.get_social_posts_with_sentiment(db_path=config.DB_PATH, days=10_000))
 
 
 YF_SYMBOL = {"RELIANCE": "RELIANCE.NS", "TCS": "TCS.NS", "INFY": "INFY.NS", "HDFCBANK": "HDFCBANK.NS",
@@ -104,8 +97,9 @@ def load_prices(tickers: List[str], start: str, end: str) -> pd.DataFrame:
     import yfinance as yf
 
     symbols = {t: YF_SYMBOL.get(t, t) for t in tickers}
-    data = yf.download(list(symbols.values()) + ["SPY"], start=start, end=end, auto_adjust=True, progress=False)
-    closes = data["Close"].rename(columns={v: k for k, v in symbols.items()}).rename(columns={"SPY": "MKT"})
+    market = "^NSEI" if any(s.endswith(".NS") for s in symbols.values()) else "SPY"
+    data = yf.download(list(symbols.values()) + [market], start=start, end=end, auto_adjust=True, progress=False)
+    closes = data["Close"].rename(columns={v: k for k, v in symbols.items()}).rename(columns={"SPY": "MKT", "^NSEI": "MKT"})
     closes.index = pd.to_datetime(closes.index).tz_localize(None)
     closes.to_parquet(cached)
     return closes
@@ -276,7 +270,9 @@ def run_backtest(posts: pd.DataFrame, prices: pd.DataFrame, with_duplicates: boo
 def main(source: str, sentiment: str, limit: Optional[int], with_duplicates: bool, out_dir: Path) -> Dict:
     posts = load_tweets(limit) if source == "tweets" else load_db_posts()
     cache = CACHE / f"sentiment_{source}_{sentiment}_{limit}.npy"
-    if source == "tweets" and cache.exists():
+    if source == "db":
+        sentiment = "pipeline labels"  # already scored by the pipeline's sentiment model
+    elif cache.exists():
         posts["sentiment"] = np.load(cache)
     else:
         posts["sentiment"] = score_sentiment(posts["text"], sentiment)
@@ -285,6 +281,13 @@ def main(source: str, sentiment: str, limit: Optional[int], with_duplicates: boo
 
     start = (posts["date"].min() - pd.Timedelta(days=60)).strftime("%Y-%m-%d")
     end = (posts["date"].max() + pd.Timedelta(days=10)).strftime("%Y-%m-%d")
+    if source == "db":
+        from ..outlook.prices import group_by_market
+
+        groups = group_by_market(sorted(posts["ticker"].unique()))
+        if len(groups) > 1:  # one market factor per run: keep the larger market
+            keep = max(groups.values(), key=len)
+            posts = posts[posts["ticker"].isin(keep)]
     prices = load_prices(sorted(posts["ticker"].unique()), start, end)
     results = {"source": TWEETS_DATASET if source == "tweets" else "diverge raw_posts",
                "sentiment_model": sentiment, **run_backtest(posts, prices, with_duplicates)}

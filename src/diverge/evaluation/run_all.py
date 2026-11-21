@@ -13,7 +13,8 @@ Steps
   2. finetune       fine-tune FinBERT on finance tweets (skipped if models/finbert-tweets exists)
   3. sentiment      sentiment model benchmark on the held-out test split
   4. backtest       walk-forward predictive backtest on 1.7M tweets + Yahoo Finance prices
-  5. render         reports/RESULTS.md (API latency is added if reports/api_latency.json exists,
+  5. outlook        train the dashboard's next-day outlook models + record their track record
+  6. render         reports/RESULTS.md (API latency is added if reports/api_latency.json exists,
                     produced by scripts/bench_api.py against a running server)
 """
 
@@ -116,7 +117,7 @@ def render() -> Path:
             lines.append(_row([k, f"{m['oos_r2_price_only']:.3f}", f"{m['oos_r2_with_narrative']:.3f}",
                                f"{m['mse_reduction_pct']:+.1f}%", f"{m['rank_ic_price_only']:.3f} → {m['rank_ic_with_narrative']:.3f}",
                                f"{m['dm_p_value']:.4f}"]))
-        lines += ["", "**Next-day excess return direction** (vs SPY)", "",
+        lines += ["", "**Next-day excess return direction** (vs the market index)", "",
                   _row(["Model", "AUC price-only", "AUC + narrative", "Long/short Sharpe after 5bp costs (price → +narr.)"]),
                   _row(["---"] * 4)]
         for k, m in d.items():
@@ -131,7 +132,7 @@ def render() -> Path:
         if best["mse_reduction_pct"] > 0 and best["dm_p_value"] < 0.05:
             bullets.append(
                 f"Showed social-media narrative features add out-of-sample information beyond prices: next-day volatility "
-                f"forecast error reduced {best['mse_reduction_pct']:.1f}% vs a HAR baseline (Diebold-Mariano p={best['dm_p_value']:.3f}) "
+                f"forecast error reduced {best['mse_reduction_pct']:.1f}% vs a HAR baseline (Diebold-Mariano {'p<0.001' if best['dm_p_value'] < 0.001 else 'p=' + format(best['dm_p_value'], '.3f')}) "
                 f"in a walk-forward backtest over {p['ticker_days']:,} ticker-days / {p['posts'] / 1e6:.1f}M posts.")
         else:
             bullets.append(
@@ -144,9 +145,28 @@ def render() -> Path:
                            f"(95% CI {lo:.2f}-{ev['ratio_95ci'][1]:.2f}).")
         lines += ["Direction (return sign) results near AUC 0.5 are expected for liquid large caps; we do not claim tradeable alpha.", ""]
 
+    ol = _load("outlook_track_record.json")
+    if ol:
+        t = ol["track_record"]; d, mv = t["direction"], t["move"]
+        lc, big = d["lean_calls"], mv["larger_than_usual_calls"]
+        lines += ["## 4. Next-day outlook (served by the dashboard)", "",
+                  f"Walk-forward test {t['test_period']} ({t['test_days']:,} ticker-days). Linear models, refit on all data for serving.", "",
+                  _row(["Metric", "Value"]), _row(["---"] * 2),
+                  _row(["Direction accuracy, all days", f"{100 * d['accuracy']:.1f}% (always-up: {100 * d['always_up_accuracy']:.1f}%)"]),
+                  _row(["Direction ROC-AUC / Brier", f"{d['auc']:.3f} / {d['brier']:.4f}"]),
+                  _row(["Accuracy of 'leans up/down' calls", f"{100 * (lc['accuracy'] or 0):.1f}% on {100 * lc['share_of_days']:.0f}% of days"]),
+                  _row(["Move size OOS R² (price-only → with social)", f"{mv['oos_r2_price_only']:.3f} → {mv['oos_r2']:.3f}"]),
+                  _row(["'Bigger move than usual' precision", f"{100 * (big['precision'] or 0):.1f}% vs base rate {100 * big['base_rate']:.1f}%"]),
+                  ""]
+        if big["precision"] and big["precision"] > big["base_rate"]:
+            bullets.append(
+                f"Shipped an explainable next-day outlook (direction + expected move) with a public track record: "
+                f"'bigger move than usual' calls were right {100 * big['precision']:.0f}% of the time vs a "
+                f"{100 * big['base_rate']:.0f}% base rate over {t['test_days']:,} out-of-sample ticker-days.")
+
     api = _load("api_latency.json")
     if api:
-        lines += ["## 4. API performance", "",
+        lines += ["## 5. API performance", "",
                   f"{api['requests_per_endpoint']:,} requests per endpoint at concurrency {api['concurrency']} "
                   f"({api.get('environment', {}).get('os', '')} laptop, single uvicorn worker).", "",
                   _row(["Endpoint", "p50 ms", "p95 ms", "p99 ms", "Throughput (req/s)", "Errors"]), _row(["---"] * 6)]
@@ -170,14 +190,15 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--quick", action="store_true")
     ap.add_argument("--render", action="store_true")
-    ap.add_argument("--skip", nargs="*", default=[], choices=["coordination", "finetune", "sentiment", "backtest"])
+    ap.add_argument("--skip", nargs="*", default=[],
+                    choices=["coordination", "finetune", "sentiment", "backtest", "outlook"])
     a = ap.parse_args()
 
     if not a.render:
         if "coordination" not in a.skip:
             from . import coordination_benchmark
 
-            print("[1/4] coordination benchmark ...")
+            print("[1/5] coordination benchmark ...")
             coordination_benchmark.run(1000 if a.quick else 4000, out_dir=REPORTS, export_weights=not a.quick)
         if "finetune" not in a.skip and not a.quick:
             from .sentiment_benchmark import FINETUNED_DIR
@@ -185,19 +206,24 @@ def main():
             if not FINETUNED_DIR.exists():
                 from . import finetune_sentiment
 
-                print("[2/4] fine-tuning FinBERT ...")
+                print("[2/5] fine-tuning FinBERT ...")
                 finetune_sentiment.main()
         if "sentiment" not in a.skip:
             from . import sentiment_benchmark
 
-            print("[3/4] sentiment benchmark ...")
+            print("[3/5] sentiment benchmark ...")
             sentiment_benchmark.run(REPORTS, skip_transformers=a.quick)
         if "backtest" not in a.skip:
             from . import backtest
 
-            print("[4/4] backtest ...")
+            print("[4/5] backtest ...")
             backtest.main("tweets", "tfidf" if a.quick else "auto", 200_000 if a.quick else None,
                           with_duplicates=not a.quick, out_dir=REPORTS)
+        if "outlook" not in a.skip:
+            from . import train_outlook
+
+            print("[5/5] training the next-day outlook ...")
+            train_outlook.main("tfidf" if a.quick else "auto", 200_000 if a.quick else None, REPORTS)
     print(f"Wrote {render()}")
 
 
