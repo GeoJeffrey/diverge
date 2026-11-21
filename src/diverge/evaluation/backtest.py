@@ -128,7 +128,15 @@ def score_sentiment(texts: pd.Series, method: str) -> np.ndarray:
 
     predict = transformer_model(sentiment_model_path() if method == "auto" else method, batch_size=256)
     sign = {"bullish": 1.0, "bearish": -1.0, "neutral": 0.0}
-    return np.array([sign.get(p, 0.0) for p in predict(list(texts))])
+    # Retweets and copy-pasted posts are common: score each distinct text once, and batch texts of
+    # similar length together so almost no compute is wasted on padding.
+    codes, uniques = pd.factorize(texts.astype(str))
+    order = np.argsort([len(t) for t in uniques])
+    print(f"Scoring {len(uniques):,} distinct texts ({len(texts):,} posts) with the transformer...")
+    labels = predict([uniques[i] for i in order])
+    scores = np.empty(len(uniques))
+    scores[order] = [sign.get(p, 0.0) for p in labels]
+    return scores[codes]
 
 
 # --------------------------------------------------------------------------- evaluation
@@ -293,8 +301,21 @@ def feature_importance(df: pd.DataFrame, narrative: List[str]) -> Dict[str, floa
     return dict(sorted(imp.items(), key=lambda kv: -kv[1]))
 
 
-def run_backtest(posts: pd.DataFrame, prices: pd.DataFrame, with_duplicates: bool = True) -> Dict:
+def daily_panel(posts: pd.DataFrame, prices: pd.DataFrame, with_duplicates: bool, cache_key: Optional[str] = None) -> pd.DataFrame:
+    """build_daily_features, cached on disk so the backtest and outlook training build it only once."""
+    path = CACHE / f"daily_{cache_key}.parquet" if cache_key else None
+    if path is not None and path.exists():
+        return pd.read_parquet(path)
     df = build_daily_features(posts, prices, with_duplicates=with_duplicates)
+    if path is not None:
+        CACHE.mkdir(parents=True, exist_ok=True)
+        df.to_parquet(path)
+    return df
+
+
+def run_backtest(posts: pd.DataFrame, prices: pd.DataFrame, with_duplicates: bool = True,
+                 cache_key: Optional[str] = None) -> Dict:
+    df = daily_panel(posts, prices, with_duplicates, cache_key)
     narrative = [f for f in NARRATIVE_FEATURES if f in df.columns and df[f].std() > 0]
     return {
         "panel": {"tickers": sorted(df["ticker"].unique().tolist()), "ticker_days": int(len(df)),
@@ -333,7 +354,9 @@ def main(source: str, sentiment: str, limit: Optional[int], with_duplicates: boo
             posts = posts[posts["ticker"].isin(keep)]
     prices = load_prices(sorted(posts["ticker"].unique()), start, end)
     results = {"source": TWEETS_DATASET if source == "tweets" else "diverge raw_posts",
-               "sentiment_model": sentiment, **run_backtest(posts, prices, with_duplicates)}
+               "sentiment_model": sentiment,
+               **run_backtest(posts, prices, with_duplicates,
+                              cache_key=f"{sentiment}_{limit}_{with_duplicates}" if source == "tweets" else None)}
     save_json(results, out_dir / "backtest.json")
     return results
 

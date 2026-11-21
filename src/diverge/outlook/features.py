@@ -37,14 +37,37 @@ def _to_trading_day(dates: pd.Series, trading_days: pd.DatetimeIndex) -> pd.Seri
 
 def _duplicate_share(group: pd.DataFrame, max_posts: int = 3000) -> float:
     g = group.iloc[:max_posts]
-    if len(g) < 2:
+    return _duplicate_share_lists(g["text"].tolist(), g["author"].tolist())
+
+
+def _duplicate_share_lists(texts: List[str], authors: List[str]) -> float:
+    if len(texts) < 2:
         return 0.0
-    texts, authors = g["text"].tolist(), g["author"].tolist()
     flagged = set()
     for i, j, _ in near_duplicate_pairs(texts, threshold=0.8):
         if authors[i] != authors[j]:
             flagged.update((i, j))
-    return len(flagged) / len(g)
+    return len(flagged) / len(texts)
+
+
+def _parallel_duplicate_share(posts: pd.DataFrame, max_posts: int = 3000) -> pd.Series:
+    """duplicate share per (ticker, day), using every CPU core for large panels."""
+    import os
+
+    keys, jobs = [], []
+    for key, grp in posts.groupby(["ticker", "day"]):
+        keys.append(key)
+        jobs.append((grp["text"].tolist()[:max_posts], grp["author"].tolist()[:max_posts]))
+    workers = max(1, (os.cpu_count() or 2) - 1)
+    if len(jobs) < 200 or workers == 1:
+        values = [_duplicate_share_lists(t, a) for t, a in jobs]
+    else:
+        from concurrent.futures import ProcessPoolExecutor
+
+        with ProcessPoolExecutor(max_workers=workers) as pool:
+            values = list(pool.map(_duplicate_share_lists, *zip(*jobs), chunksize=16))
+    index = pd.MultiIndex.from_tuples(keys, names=["ticker", "day"])
+    return pd.Series(values, index=index, dtype=float)
 
 
 def rolling_rn(onsets: pd.Series, history: int = 28) -> pd.Series:
@@ -92,7 +115,7 @@ def build_daily_features(
     daily["disagreement"] = np.sqrt(1 - ((daily["bull"] - daily["bear"]) / bs.replace(0, np.nan)) ** 2).fillna(0.0)
     daily["log_volume"] = np.log1p(daily["n"])
     if with_duplicates:
-        daily["duplicate_share"] = g[["text", "author"]].apply(_duplicate_share)
+        daily["duplicate_share"] = _parallel_duplicate_share(posts)
     else:
         daily["duplicate_share"] = 0.0
 

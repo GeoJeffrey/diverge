@@ -26,7 +26,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from ..outlook.features import NARRATIVE_FEATURES, PRICE_FEATURES, build_daily_features
+from ..outlook.features import NARRATIVE_FEATURES, PRICE_FEATURES
 from ..outlook.model import LEAN_THRESHOLD, MODEL_PATH, SLIGHT_THRESHOLD
 from .report import save_json
 
@@ -158,7 +158,7 @@ def train(df: pd.DataFrame, source: str, sentiment: str) -> Dict[str, Any]:
 
 
 def main(sentiment: str = "auto", limit: Optional[int] = None, out_dir: Path = Path("reports")) -> Dict[str, Any]:
-    from .backtest import CACHE, load_prices, load_tweets, score_sentiment, TWEETS_DATASET
+    from .backtest import CACHE, daily_panel, load_prices, load_tweets, score_sentiment, TWEETS_DATASET
 
     posts = load_tweets(limit)
     cache = CACHE / f"sentiment_tweets_{sentiment}_{limit}.npy"
@@ -171,7 +171,7 @@ def main(sentiment: str = "auto", limit: Optional[int] = None, out_dir: Path = P
     end = (posts["date"].max() + pd.Timedelta(days=10)).strftime("%Y-%m-%d")
     prices = load_prices(sorted(posts["ticker"].unique()), start, end)
 
-    spec = train(build_daily_features(posts, prices), TWEETS_DATASET, sentiment)
+    spec = train(daily_panel(posts, prices, True, cache_key=f"{sentiment}_{limit}_True"), TWEETS_DATASET, sentiment)
     MODEL_PATH.write_text(json.dumps(spec, indent=2), encoding="utf-8")
     save_json({"track_record": spec["track_record"], "training_data": spec["training_data"]},
               out_dir / "outlook_track_record.json")

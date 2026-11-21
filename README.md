@@ -88,7 +88,7 @@ Individual steps:
 
 ```bash
 pip install -r requirements-eval.txt
-python -m diverge.evaluation.run_all            # full run, ~1 h on a laptop GPU
+python -m diverge.evaluation.run_all            # full run, ~45 min on a laptop GPU
 python -m diverge.evaluation.run_all --quick    # CPU smoke run, ~10 min
 
 # API latency (with the server running in another terminal)

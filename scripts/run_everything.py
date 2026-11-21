@@ -13,7 +13,7 @@ One command that reproduces every number in reports/RESULTS.md and checks the wh
 
 A failing step is recorded and the run continues. Logs go to reports/run_logs/.
 
-    python scripts/run_everything.py            # full run (~2 h on a laptop GPU)
+    python scripts/run_everything.py            # full run (~45-75 min on a laptop GPU)
     python scripts/run_everything.py --quick    # smoke run (~15 min, CPU is fine)
     python scripts/run_everything.py --only api report
 """
@@ -117,7 +117,22 @@ def main() -> None:
 
     status = {}
     t_all = time.perf_counter()
+    # The live scrape is network-bound and the evaluation is GPU/CPU-bound: run them side by side.
+    background = None
+    if "pipeline" in steps and "evaluation" in steps:
+        LOGS.mkdir(parents=True, exist_ok=True)
+        print("\n==> pipeline (started in the background, runs alongside the evaluation)")
+        bg_log = (LOGS / "pipeline.log").open("w", encoding="utf-8")
+        background = (subprocess.Popen([PY, "run_all.py"], cwd=ROOT, stdout=bg_log, stderr=subprocess.STDOUT, env=env),
+                      bg_log, time.perf_counter())
     for step in steps:
+        if step == "pipeline" and background is not None:
+            proc, bg_log, t0 = background
+            print("\n==> pipeline (waiting for the background run to finish)")
+            ok = proc.wait() == 0
+            bg_log.close()
+            status[step] = f"{'OK' if ok else 'FAILED (see reports/run_logs/pipeline.log)'} ({(time.perf_counter() - t0) / 60:.1f} min)"
+            continue
         print(f"\n==> {step}")
         t0 = time.perf_counter()
         if step == "preflight":
