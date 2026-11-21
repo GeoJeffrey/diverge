@@ -49,8 +49,17 @@ def serving_url() -> Optional[str]:
 
 def _rows(conn: sqlite3.Connection, table: str, ts_col: str, since: Optional[str]) -> List[Dict]:
     conn.row_factory = sqlite3.Row
-    sql = f"SELECT * FROM {table}" + (f" WHERE {ts_col} >= ?" if since else "")
-    return [dict(r) for r in conn.execute(sql, (since,) if since else ())]
+    if not since:
+        return [dict(r) for r in conn.execute(f"SELECT * FROM {table}")]
+    if table == "raw_posts":
+        # Also send older posts that newly computed rows point to (PostgreSQL enforces the foreign keys).
+        sql = """
+            SELECT * FROM raw_posts WHERE scraped_at >= :s
+               OR post_id IN (SELECT post_id FROM text_features WHERE computed_at >= :s)
+               OR post_id IN (SELECT post_id FROM reasoning_trace WHERE created_at >= :s)
+        """
+        return [dict(r) for r in conn.execute(sql, {"s": since})]
+    return [dict(r) for r in conn.execute(f"SELECT * FROM {table} WHERE {ts_col} >= ?", (since,))]
 
 
 def publish(db_path: Path = config.DB_PATH, lookback_days: int = 3, full: bool = False) -> Dict[str, int]:
@@ -66,7 +75,9 @@ def publish(db_path: Path = config.DB_PATH, lookback_days: int = 3, full: bool =
     since = None if full else (datetime.now(timezone.utc) - timedelta(days=lookback_days)).isoformat()
     insert_fn = postgresql.insert if engine.dialect.name == "postgresql" else sqlite_dialect.insert
     counts: Dict[str, int] = {}
-    src = sqlite3.connect(db_path)
+    from . import storage
+
+    src = storage.get_connection(db_path)  # also creates any table an older store is missing
     try:
         with engine.begin() as dst:
             for table, ts_col in TABLES:
