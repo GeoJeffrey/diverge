@@ -257,47 +257,31 @@ def get_ticker_detail(
         vdi=_build_index_metric(INDEX_LABELS["vdi"], row.get("vdi"), "vdi"),
     )
 
-    # Build coordination metric
+    # Coordination metric: the window's own score, else the latest scored window for the ticker.
+    # When nothing has been scored, report it as unavailable -- never an estimated value.
     coord_score = row.get("coordination_score")
     conf_flag = row.get("confidence_flag")
-
-    if coord_score is None:
+    if coord_score is None or conf_flag in (None, "insufficient_data"):
         c_row = db.execute(
             text("""
                 SELECT coordination_score, confidence_flag FROM coordination_scores
-                WHERE ticker = :t AND coordination_score IS NOT NULL AND coordination_score > 0
+                WHERE ticker = :t AND coordination_score IS NOT NULL
+                  AND confidence_flag IS NOT NULL AND confidence_flag != 'insufficient_data'
                 ORDER BY window_start_utc DESC LIMIT 1
             """),
             {"t": symbol.upper()},
         ).mappings().first()
-        if c_row:
-            coord_score = float(c_row["coordination_score"])
-            conf_flag = str(c_row["confidence_flag"])
-        else:
-            var_row = db.execute(
-                text("""
-                    SELECT AVG((tf.sentiment_score - 0.1)*(tf.sentiment_score - 0.1)), COUNT(*)
-                    FROM text_features tf JOIN raw_posts rp ON tf.post_id = rp.post_id
-                    WHERE rp.ticker = :t
-                """),
-                {"t": symbol.upper()},
-            ).first()
-            if var_row and var_row[1] and var_row[1] > 0:
-                s_var = float(var_row[0] or 0.05)
-                inv_comp = max(0.0, min(1.0, 1.0 - (s_var / 0.25)))
-                coord_score = round(float(25.0 + 35.0 * inv_comp), 1)
-                conf_flag = "high_trust" if coord_score < 40 else "moderate"
-            else:
-                coord_score = 32.5
-                conf_flag = "high_trust"
+        coord_score, conf_flag = (
+            (float(c_row["coordination_score"]), str(c_row["confidence_flag"])) if c_row else (None, None)
+        )
 
     coord_available = coord_score is not None
     coordination = CoordinationMetric(
-        label="Trust Score",
-        coordination_score=round(float(coord_score), 1) if coord_score is not None else 0.0,
-        confidence_flag=conf_flag or "high_trust",
+        label="Coordination risk",
+        coordination_score=round(float(coord_score), 1) if coord_available else 0.0,
+        confidence_flag=conf_flag if coord_available else "insufficient_data",
         available=coord_available,
-        coverage_note=None if coord_available else "No coordination data available",
+        coverage_note=None if coord_available else "Needs at least 20 posts in a window to assess coordination.",
     )
 
     # Phylogeny context (up to 3 most recent transitions)

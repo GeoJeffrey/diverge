@@ -1,0 +1,110 @@
+{
+  "generated_at": "2026-11-21T16:55:21+00:00",
+  "environment": {
+    "python": "3.11.9",
+    "machine": "AMD64",
+    "os": "Windows",
+    "torch": "2.14.1+cu126",
+    "cuda_device": "NVIDIA GeForce RTX 3060 Laptop GPU"
+  },
+  "windows": 4000,
+  "posts": 490514,
+  "positive_rate": 0.494,
+  "feature_extraction_posts_per_sec": 8599.5,
+  "heuristic_as_deployed": {
+    "roc_auc": 0.6567,
+    "pr_auc": 0.7116,
+    "precision": 1.0,
+    "recall": 0.0051,
+    "f1": 0.0101,
+    "threshold": 40.0,
+    "fpr_on_news_bursts": 0.0
+  },
+  "heuristic_tuned": {
+    "roc_auc": 0.6567,
+    "pr_auc": 0.7116,
+    "precision": 0.5045,
+    "recall": 0.9511,
+    "f1": 0.6593,
+    "threshold": 19.61
+  },
+  "logistic_regression": {
+    "roc_auc": 0.9597,
+    "pr_auc": 0.9705,
+    "precision": 0.9296,
+    "recall": 0.9123,
+    "f1": 0.9209,
+    "threshold": 0.3479,
+    "fpr_on_news_bursts": 0.1695
+  },
+  "gradient_boosting": {
+    "roc_auc": 0.9748,
+    "pr_auc": 0.979,
+    "precision": 0.9704,
+    "recall": 0.8853,
+    "f1": 0.9259,
+    "threshold": 0.8388
+  },
+  "recall_by_bot_share": {
+    "0-15%": {
+      "windows": 84,
+      "recall_logreg": 0.6429,
+      "recall_heuristic": 0.0
+    },
+    "15-30%": {
+      "windows": 241,
+      "recall_logreg": 0.9129,
+      "recall_heuristic": 0.0
+    },
+    "30-100%": {
+      "windows": 268,
+      "recall_logreg": 0.9963,
+      "recall_heuristic": 0.0112
+    }
+  },
+  "ablation": {
+    "ks": {
+      "roc_auc_without": 0.9595,
+      "auc_drop": 0.0002
+    },
+    "acf": {
+      "roc_auc_without": 0.9598,
+      "auc_drop": -0.0001
+    },
+    "onset_dispersion": {
+      "roc_auc_without": 0.9594,
+      "auc_drop": 0.0003
+    },
+    "duplicate_ratio": {
+      "roc_auc_without": 0.7192,
+      "auc_drop": 0.2405
+    },
+    "sentiment_variance": {
+      "roc_auc_without": 0.9595,
+      "auc_drop": 0.0002
+    }
+  },
+  "lsh_scaling": [
+    {
+      "posts": 1000,
+      "exact_seconds": 0.857,
+      "lsh_seconds": 0.06,
+      "speedup": 14.21,
+      "pair_recall": 1.0
+    },
+    {
+      "posts": 2000,
+      "exact_seconds": 3.811,
+      "lsh_seconds": 0.128,
+      "speedup": 29.8,
+      "pair_recall": 1.0
+    },
+    {
+      "posts": 4000,
+      "exact_seconds": 15.715,
+      "lsh_seconds": 0.39,
+      "speedup": 40.26,
+      "pair_recall": 1.0
+    }
+  ]
+}

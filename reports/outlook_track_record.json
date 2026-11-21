@@ -1,0 +1,87 @@
+{
+  "generated_at": "2026-11-21T17:24:03+00:00",
+  "environment": {
+    "python": "3.11.9",
+    "machine": "AMD64",
+    "os": "Windows",
+    "torch": "2.14.1+cu126",
+    "cuda_device": "NVIDIA GeForce RTX 3060 Laptop GPU"
+  },
+  "track_record": {
+    "test_period": "2016-01-04 to 2020-01-08",
+    "test_days": 5055,
+    "tickers": [
+      "AAPL",
+      "AMZN",
+      "GOOG",
+      "MSFT",
+      "TSLA"
+    ],
+    "direction": {
+      "auc": 0.5072,
+      "accuracy": 0.5159,
+      "always_up_accuracy": 0.5401,
+      "brier": 0.2505,
+      "lean_calls": {
+        "share_of_days": 0.2322,
+        "accuracy": 0.5264,
+        "days": 1174
+      },
+      "slight_calls": {
+        "share_of_days": 0.4263,
+        "accuracy": 0.5197,
+        "days": 2155
+      },
+      "no_call": {
+        "share_of_days": 0.3414,
+        "accuracy": 0.5041,
+        "days": 1726
+      },
+      "calibration": [
+        {
+          "mean_predicted": 0.4541,
+          "actual_up_rate": 0.5232,
+          "days": 1011
+        },
+        {
+          "mean_predicted": 0.4934,
+          "actual_up_rate": 0.546,
+          "days": 1011
+        },
+        {
+          "mean_predicted": 0.5158,
+          "actual_up_rate": 0.544,
+          "days": 1011
+        },
+        {
+          "mean_predicted": 0.5352,
+          "actual_up_rate": 0.543,
+          "days": 1011
+        },
+        {
+          "mean_predicted": 0.5727,
+          "actual_up_rate": 0.544,
+          "days": 1011
+        }
+      ]
+    },
+    "move": {
+      "oos_r2": 0.1773,
+      "oos_r2_price_only": 0.1248,
+      "rank_corr": 0.3367,
+      "larger_than_usual_calls": {
+        "share_of_days": 0.2669,
+        "precision": 0.493,
+        "base_rate": 0.3925,
+        "lift": 1.26
+      }
+    }
+  },
+  "training_data": {
+    "source": "mjw/stock_market_tweets",
+    "sentiment_model": "auto",
+    "ticker_days": 6320,
+    "first_day": "2014-12-31",
+    "last_day": "2020-01-08"
+  }
+}

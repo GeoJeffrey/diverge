@@ -29,3 +29,11 @@ env/
 
 # Data directory (raw scraped data)
 data/
+
+# Trained model weights (re-create with python -m diverge.evaluation.finetune_sentiment)
+models/
+# Evaluation caches
+.cache/
+
+# Local run logs from scripts/run_everything.py
+reports/run_logs/

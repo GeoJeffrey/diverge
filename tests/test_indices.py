@@ -60,6 +60,10 @@ class TestPhase3Indices(unittest.TestCase):
 
     # -- 3. CASSI Index Tests ----------------------------------
     def test_cassi_cross_attribution(self):
+        try:
+            import statsmodels  # noqa: F401
+        except ImportError:
+            self.skipTest("statsmodels not installed")
         # Generate 40 days of synthetic data
         np.random.seed(42)
         dates = pd.date_range("2026-01-01", periods=40, freq="D")

@@ -1,7 +1,7 @@
 # Cloud Deployment Guide — Railway & Vercel
 
 This guide outlines the exact, step-by-step procedure to deploy the Diverge system from scratch:
-- **Database & Services (Railway)**: Managed PostgreSQL, FastAPI Backend API, and continuous Background Scraper Worker.
+- **Database & Services (Railway)**: Managed PostgreSQL, FastAPI Backend API, and a pipeline worker that publishes results to PostgreSQL.
 - **Frontend Dashboard (Vercel)**: React + Vite Single Page Application (SPA).
 
 ---
@@ -16,7 +16,7 @@ This guide outlines the exact, step-by-step procedure to deploy the Diverge syst
        │                                     ▲
        ├── [ Railway Managed PostgreSQL ] ───┘
        │            ▲
-[ Railway (Scraper Worker) ] ── (Runs every 4h via APScheduler)
+[ Railway (Pipeline Worker) ] ── (every 4h: compute in SQLite, publish to Postgres)
 ```
 
 ---
@@ -44,22 +44,25 @@ This guide outlines the exact, step-by-step procedure to deploy the Diverge syst
 
 *Note: Railway will inject `PORT` dynamically, which the backend reads automatically.*
 
-### Step 3: Deploy Scraper Worker Service
-To keep data ingested on schedule without blocking or overloading the HTTP API:
-1. In the same Railway project, click **Create** $\rightarrow$ **GitHub Repo** $\rightarrow$ select `Diverge` again.
-2. Rename this service to **`diverge-scraper-worker`**.
-3. Go to **Settings** $\rightarrow$ **Deploy**:
-   - Change **Custom Start Command** to:
-     ```bash
-     python -m diverge.pipeline_scheduler --hours 4 --run-now
-     ```
-4. In **Variables**, link to the shared database:
+### Step 3: Deploy the Pipeline Worker
+The worker runs the full pipeline every 4 hours: ingest → features → indices → integrity → composite → explainability → next-day outlook → **publish**. It keeps its own SQLite working store (rolling history for Rn, z-scores and first-mention onsets). The publish phase then upserts the new results into the shared PostgreSQL database that the API reads.
+
+1. In the same Railway project, click **Create** → **GitHub Repo** → select `diverge` again.
+2. Rename this service to **`diverge-pipeline-worker`**.
+3. **Settings → Deploy → Custom Start Command**:
+   ```bash
+   python -m diverge.pipeline_scheduler --hours 4 --run-now
+   ```
+4. **Settings → Volumes → Add volume** mounted at `/app/data`, so the working store and its history survive redeploys.
+5. **Variables**:
 
 | Variable Name | Value | Description |
 |---|---|---|
-| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` | Shared PostgreSQL instance |
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` | Serving database the publish phase writes to |
 
-5. Click **Deploy**. This worker will execute an immediate ingestion pass and then run continuously every 4 hours, logging all runs to stdout.
+6. **Deploy.** On the first deployment, backfill everything once from the worker's shell: `python -m diverge.publish --full`.
+
+The next-day outlook needs the trained model file `src/diverge/outlook/outlook_model.json`. Create it with `python -m diverge.evaluation.run_all` (or `python -m diverge.evaluation.train_outlook`) and commit it. Until it exists, the dashboard shows "model not trained yet" instead of a prediction.
 
 ---
 
@@ -93,7 +96,8 @@ Add the following environment variable:
 4. Visit `https://diverge.vercel.app`:
    - Register a trader account at `/signup`.
    - Browse monitored equities at `/tickers`.
-   - View composite narrative signals and explainability traces.
+   - Open a ticker to see its next-day outlook, narrative intensity and explainability traces.
+   - Without `VITE_API_BASE_URL` the app runs on built-in demo data and shows a banner saying so.
 
 ---
 
@@ -102,5 +106,5 @@ Add the following environment variable:
 After completing both deployments:
 1. **API Health**: `curl https://<your-railway-domain>/health` should return `{"status":"healthy","database":"connected"}`.
 2. **CORS Check**: Inspect Network tab in your browser on Vercel — confirm no CORS blocking on `/tickers` or `/auth/login`.
-3. **Database Tables**: Railway's PostgreSQL table viewer should show populated `users`, `raw_posts`, `text_features`, and `ticker_window_metrics`.
-4. **Worker Logs**: Check Deploy Logs in `diverge-scraper-worker` on Railway to confirm `[AUDIT LOG] Scheduled job executed cleanly`.
+3. **Database Tables**: Railway's PostgreSQL table viewer should show populated `raw_posts`, `text_features`, `ticker_window_metrics` and `ticker_outlook`.
+4. **Worker Logs**: Check the Deploy Logs of `diverge-pipeline-worker` for `[SUCCESS] pipeline completed` and the `Published to serving database` counts.

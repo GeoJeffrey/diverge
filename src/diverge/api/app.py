@@ -11,7 +11,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import health, auth, tickers
+from .routers import health, auth, outlook, tickers
 from ..db.base import Base, engine
 from ..db import models  # Ensure all SQLAlchemy models are registered
 
@@ -57,6 +57,7 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(tickers.router)
+app.include_router(outlook.router)
 
 
 @app.get("/", include_in_schema=False)
@@ -82,7 +83,11 @@ def custom_openapi():
         with open(openapi_path, "r", encoding="utf-8") as f:
             app.openapi_schema = json.load(f)
             return app.openapi_schema
-    return super(FastAPI, app).openapi()
+    from fastapi.openapi.utils import get_openapi
+
+    app.openapi_schema = get_openapi(title=app.title, version=app.version,
+                                     description=app.description, routes=app.routes)
+    return app.openapi_schema
 
 
 import json

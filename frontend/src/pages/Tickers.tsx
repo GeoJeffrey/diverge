@@ -4,7 +4,8 @@ import { api, ApiError } from "@/lib/api";
 import { formatWindow } from "@/lib/labels";
 import { TrustBadge, VerdictBadge } from "@/components/TrustBadge";
 import { ErrorState, LoadingState } from "@/components/StatusStates";
-import type { TickerSimpleItem } from "@/types/api";
+import type { TickerOutlookResponse, TickerSimpleItem } from "@/types/api";
+import { LeanPill } from "@/components/OutlookCard";
 import type { ShellContext } from "@/pages/Layout";
 
 export default function TickersPage() {
@@ -12,6 +13,7 @@ export default function TickersPage() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState<TickerSimpleItem[]>([]);
+  const [outlooks, setOutlooks] = useState<Record<string, TickerOutlookResponse>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -21,6 +23,10 @@ export default function TickersPage() {
     try {
       const res = await api.tickers();
       setRows(res.tickers);
+      api
+        .outlooks()
+        .then((o) => setOutlooks(Object.fromEntries(o.outlooks.map((x) => [x.symbol, x]))))
+        .catch(() => undefined);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Could not load tickers.");
     } finally {
@@ -64,12 +70,13 @@ export default function TickersPage() {
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-[#e7e1d8] bg-white">
-        <table className="min-w-[720px] w-full text-left">
+        <table className="min-w-[880px] w-full text-left">
           <thead>
             <tr className="border-b border-[#f0ede8] text-xs text-[#6b6b6b]">
               <th className="px-5 py-3 font-semibold">Ticker</th>
               <th className="px-5 py-3 font-semibold">Sector</th>
-              <th className="px-5 py-3 font-semibold">Composite</th>
+              <th className="px-5 py-3 font-semibold">Next-day outlook</th>
+              <th className="px-5 py-3 font-semibold">Narrative intensity</th>
               <th className="px-5 py-3 font-semibold">Verdict</th>
               <th className="px-5 py-3 font-semibold">Trust</th>
               <th className="px-5 py-3 font-semibold">Window</th>
@@ -90,6 +97,9 @@ export default function TickersPage() {
                   <p className="text-xs text-[#6b6b6b]">{t.name}</p>
                 </td>
                 <td className="px-5 py-4 text-sm text-[#555]">{t.sector}</td>
+                <td className="px-5 py-4">
+                  {outlooks[t.symbol] ? <LeanPill outlook={outlooks[t.symbol]} /> : <span className="text-xs text-[#6b6b6b]">—</span>}
+                </td>
                 <td className="px-5 py-4 font-bold tabular-nums">
                   {t.score === null ? "—" : t.score.toFixed(1)}
                 </td>

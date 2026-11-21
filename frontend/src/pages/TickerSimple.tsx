@@ -6,6 +6,8 @@ import { TrustBadge, VerdictBadge } from "@/components/TrustBadge";
 import { ErrorState, LoadingState } from "@/components/StatusStates";
 import type { TickerSimpleResponse } from "@/types/api";
 import type { ShellContext } from "@/pages/Layout";
+import { OutlookCard } from "@/components/OutlookCard";
+import { useOutlook } from "@/lib/useOutlook";
 
 export default function TickerSimple() {
   const { symbol: routeSymbol } = useParams();
@@ -14,6 +16,7 @@ export default function TickerSimple() {
   const [data, setData] = useState<TickerSimpleResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const { outlook, model } = useOutlook(symbol);
 
   async function load() {
     setLoading(true);
@@ -54,21 +57,27 @@ export default function TickerSimple() {
         <p className="mt-3 font-mono text-xs text-[#7a5040]">{formatWindow(data.window_start_utc)}</p>
       </div>
 
+      {outlook && (
+        <div className="mb-5">
+          <OutlookCard outlook={outlook} model={model} compact />
+        </div>
+      )}
+
       <div className="grid gap-4 md:grid-cols-3">
         <article className="rounded-xl border border-[#e7e1d8] bg-white p-5">
-          <p className="text-sm font-semibold">What the number is saying</p>
+          <p className="text-sm font-semibold">Narrative intensity ({data.score === null ? "—" : Math.round(data.score)}/100)</p>
           <p className="mt-2 text-sm leading-relaxed text-[#555]">
             {data.verdict_label === "building" && "The conversation is gathering strength rather than fading."}
             {data.verdict_label === "mixed" && "Bullish and cautious threads are both present. Treat this as a split tape, not a clean call."}
             {data.verdict_label === "fading" && "The conversation is losing energy relative to the prior window."}
-            {data.verdict_label === "insufficient_data" && "There is not yet enough overlapping coverage to publish a reliable composite."}
+            {data.verdict_label === "insufficient_data" && "There is not yet enough overlapping coverage to publish a reliable reading."}
           </p>
         </article>
         <article className="rounded-xl bg-[#eef0f6] p-5">
           <p className="text-sm font-semibold text-[#3d4a66]">How much to trust it</p>
           <p className="mt-2 text-sm leading-relaxed text-[#4a5568]">{data.trust_label}</p>
           <p className="mt-2 text-xs leading-relaxed text-[#5c6578]">
-            Trust is about whether the conversation looks organic. It is not the same thing as a high or low composite.
+            Trust is about whether the conversation looks organic, not whether the stock goes up or down.
           </p>
         </article>
         <article className="rounded-xl border border-[#e7e1d8] bg-white p-5">

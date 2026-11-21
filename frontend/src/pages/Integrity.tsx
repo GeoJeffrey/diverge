@@ -43,7 +43,7 @@ export default function IntegrityPage() {
     <div className="px-4 py-5 md:px-7">
       <h2 className="text-lg font-bold">Integrity · {detail.symbol}</h2>
       <p className="mb-5 text-sm text-[#6b6b6b]">
-        Trust Score is a coordination reading. It is not a red-to-green narrative scale.
+        Coordination risk is the estimated probability that the conversation contains a coordinated campaign. It is not a bullish/bearish scale.
       </p>
 
       {coord.available ? (
@@ -79,10 +79,10 @@ export default function IntegrityPage() {
             Coordination looks at whether many accounts are saying the same thing at the same time.
           </p>
           <p className="text-sm leading-relaxed text-[#555]">
-            Near-duplicates show up in Why this score under their own evidence group, not as a second composite.
+            Near-duplicates show up in Why this score under their own evidence group, not as a second score.
           </p>
           <p className="text-sm leading-relaxed text-[#555]">
-            A high Trust Score suspicion does not mean “sell.” It means “this conversation may not be organic.”
+            High coordination risk does not mean “sell.” It means “this conversation may not be organic,” and the next-day outlook is pulled toward 50/50.
           </p>
         </div>
       </div>

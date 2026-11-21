@@ -1,32 +1,97 @@
 """
-rn_index.py
+narrative_reproduction.py
 
-Effective Reproduction Number Index (Rn) calculation.
+Narrative Reproduction Number (Rn), the "Contagion Core" index.
 
-Bins post_timing's is_first_mention flag into a per-ticker daily onset series
-(count of new distinct posters per day). Estimates:
-  - beta: transmission rate (growth rate of new onset users relative to active users).
-  - gamma: decay/recovery rate derived from historical onset spike shapes (or default 0.20 if sparse).
-Rn = beta / gamma.
+Treats each account's *first* mention of a ticker as a new "infection" and estimates
+the time-varying reproduction number with the renewal-equation method of
+Cori et al. (2013, Am. J. Epidemiology), the same estimator used by EpiEstim:
 
-NOTE & DISCLAIMER:
-This is a lightweight viral transmission approximation using linear/exponential growth ratios,
-NOT a full epidemiological serial-interval compartmental model fitting.
+    I_t      ~ Poisson(R * Lambda_t)
+    Lambda_t = sum_{s>=1} I_{t-s} * w_s            (w = discretised serial interval)
+    R | data ~ Gamma(a + sum I_t, 1 / (1/b + sum Lambda_t))   over the last `tau` days
 
-GUARD: Needs >= 7 distinct days of data for that ticker, else returns (None, 0.0).
+Rn > 1: the narrative is recruiting new posters faster than it loses them (spreading).
+Rn < 1: the narrative is dying out.
+
+Assumptions (documented, tunable): serial interval ~ Gamma(mean=1.5 days, sd=1.0 day),
+Gamma(1, 5) prior, 7-day estimation window. Calendar days without first mentions count
+as zero onsets.
+
+GUARD: needs >= MIN_DISTINCT_DAYS days of history and >= MIN_TOTAL_ONSETS onsets,
+otherwise returns (None, 0.0). No heuristic estimate is substituted.
 """
 
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
+from scipy import stats
 
 from .. import config, storage, utils
 
 logger = utils.setup_logger("rn_index")
 
 MIN_DISTINCT_DAYS = 7
-DEFAULT_GAMMA_DECAY = 0.20  # default 5-day narrative decay rate approximation
+MIN_TOTAL_ONSETS = 10
+SERIAL_INTERVAL_MEAN = 1.5
+SERIAL_INTERVAL_SD = 1.0
+MAX_SERIAL_INTERVAL = 7
+PRIOR_SHAPE = 1.0
+PRIOR_SCALE = 5.0
+ESTIMATION_WINDOW = 7
+
+
+def serial_interval_weights(
+    mean: float = SERIAL_INTERVAL_MEAN, sd: float = SERIAL_INTERVAL_SD, max_days: int = MAX_SERIAL_INTERVAL
+) -> np.ndarray:
+    """Discretised gamma serial interval w_1..w_max (w_0 = 0), normalised to sum to 1."""
+    shape = (mean / sd) ** 2
+    scale = sd**2 / mean
+    edges = np.arange(0, max_days + 1) + 0.5
+    edges[0] = 0.0
+    w = np.diff(stats.gamma.cdf(edges, a=shape, scale=scale))
+    return w / w.sum()
+
+
+def estimate_rn_posterior(
+    daily_onsets: List[int],
+    tau: int = ESTIMATION_WINDOW,
+    min_days: int = MIN_DISTINCT_DAYS,
+) -> Optional[Dict[str, float]]:
+    """
+    Posterior of R over the last `tau` days of a daily onset series.
+    Returns {"mean", "lower", "upper", "cv"} (95% credible interval) or None when the guard fails.
+    """
+    onsets = np.asarray(daily_onsets, dtype=float)
+    if len(onsets) < min_days or onsets.sum() < MIN_TOTAL_ONSETS:
+        logger.info(
+            f"Rn guard: {len(onsets)} days / {int(onsets.sum())} onsets "
+            f"(need >= {min_days} days and >= {MIN_TOTAL_ONSETS} onsets). Returning None."
+        )
+        return None
+
+    w = serial_interval_weights()
+    # Lambda_t = sum_{s=1}^{S} I_{t-s} w_s
+    lam = np.array(
+        [sum(onsets[t - s] * w[s - 1] for s in range(1, len(w) + 1) if t - s >= 0) for t in range(len(onsets))]
+    )
+    window = slice(max(1, len(onsets) - tau), len(onsets))
+    sum_i, sum_lam = float(onsets[window].sum()), float(lam[window].sum())
+    if sum_lam <= 0:
+        return None
+
+    shape_post = PRIOR_SHAPE + sum_i
+    scale_post = 1.0 / (1.0 / PRIOR_SCALE + sum_lam)
+    mean = shape_post * scale_post
+    lower, upper = stats.gamma.ppf([0.025, 0.975], a=shape_post, scale=scale_post)
+    return {
+        "mean": round(float(mean), 4),
+        "lower": round(float(lower), 4),
+        "upper": round(float(upper), 4),
+        "cv": round(float(1.0 / np.sqrt(shape_post)), 4),
+    }
 
 
 def compute_rn_from_onset_counts(
@@ -34,39 +99,29 @@ def compute_rn_from_onset_counts(
     min_days: int = MIN_DISTINCT_DAYS,
 ) -> Tuple[Optional[float], Optional[float]]:
     """
-    Compute Rn and confidence score given an ordered list of daily new-onset poster counts.
-    Returns (rn_value, confidence_score) or (None, 0.0) if guard fails.
+    Returns (Rn posterior mean, confidence) where confidence = 1 / (1 + posterior CV),
+    so narrow credible intervals (lots of data) approach 1.0. (None, 0.0) if the guard fails.
     """
-    if len(daily_onsets) < min_days:
-        logger.info(
-            f"Rn GUARD TRIGGERED: Only {len(daily_onsets)} distinct days of data (< {min_days}). Returning None."
-        )
+    post = estimate_rn_posterior(daily_onsets, min_days=min_days)
+    if post is None:
         return (None, 0.0)
+    return (post["mean"], round(1.0 / (1.0 + post["cv"]), 4))
 
-    onsets = np.array(daily_onsets, dtype=float)
-    if np.all(onsets == 0):
-        return (0.0, 1.0)
 
-    # Calculate transmission rate (beta) from average consecutive growth ratios
-    prev_active = np.maximum(onsets[:-1], 1.0)
-    next_onsets = onsets[1:]
-    growth_ratios = next_onsets / prev_active
-    beta = float(np.mean(growth_ratios))
-
-    # Calculate decay rate (gamma) from historical peak-to-trough drops if available
-    peak_diffs = np.diff(onsets)
-    negative_diffs = -peak_diffs[peak_diffs < 0]
-
-    if len(negative_diffs) > 0 and np.mean(onsets) > 0:
-        gamma = float(np.mean(negative_diffs) / (np.mean(onsets) + 1e-5))
-        gamma = max(0.05, min(1.0, gamma))
-        confidence = 1.0
-    else:
-        gamma = DEFAULT_GAMMA_DECAY
-        confidence = 0.5  # lower confidence due to default gamma fallback
-
-    rn_value = round(float(beta / gamma), 4) if gamma > 0 else 0.0
-    return (rn_value, confidence)
+def daily_onset_series(rows: List[Dict]) -> List[int]:
+    """Dense per-calendar-day count of first mentions (missing days filled with 0)."""
+    counts: Dict[date, int] = {}
+    for r in rows:
+        if r.get("is_first_mention") == 1:
+            try:
+                d = date.fromisoformat(str(r.get("timestamp_utc", ""))[:10])
+            except ValueError:
+                continue
+            counts[d] = counts.get(d, 0) + 1
+    if not counts:
+        return []
+    first, last = min(counts), max(counts)
+    return [counts.get(first + timedelta(days=i), 0) for i in range((last - first).days + 1)]
 
 
 def compute_rn(
@@ -75,12 +130,7 @@ def compute_rn(
     window_end_utc: Optional[str] = None,
     db_path: Path = config.DB_PATH,
 ) -> Tuple[Optional[float], Optional[float]]:
-    """
-    Fetch timing records from DB for ticker, build daily onset count series, and return (Rn, confidence).
-    If >= 7 distinct days exist, calculates standard Rn.
-    If < 7 days exist (sparse live data), uses relaxed 2-day calculation with reduced confidence (0.3),
-    or estimates base viral reproduction (1.0) so no live ticker is left with NULL.
-    """
+    """Fetch post_timing rows for a ticker and return (Rn, confidence), or (None, 0.0)."""
     rows = storage.get_post_timing_for_ticker(
         ticker=ticker,
         start_utc=window_start_utc,
@@ -90,30 +140,4 @@ def compute_rn(
     if not rows:
         logger.info(f"No post_timing rows for ticker {ticker} -> Rn is (None, 0.0).")
         return (None, 0.0)
-
-    # Group first-mentions by date string 'YYYY-MM-DD'
-    daily_counts: Dict[str, int] = {}
-    total_fm = 0
-    for r in rows:
-        if r.get("is_first_mention") == 1:
-            total_fm += 1
-            date_str = str(r.get("timestamp_utc", ""))[:10]
-            if date_str:
-                daily_counts[date_str] = daily_counts.get(date_str, 0) + 1
-
-    sorted_dates = sorted(daily_counts.keys())
-    daily_onsets = [daily_counts[d] for d in sorted_dates]
-
-    if len(daily_onsets) >= MIN_DISTINCT_DAYS:
-        return compute_rn_from_onset_counts(daily_onsets)
-    elif len(daily_onsets) >= 2:
-        rn_val, _ = compute_rn_from_onset_counts(daily_onsets, min_days=2)
-        return (rn_val, 0.4)
-    else:
-        # 1 day or sparse mentions: rate of first mentions relative to total post volume
-        total_posts = len(rows)
-        fm_ratio = total_fm / total_posts if total_posts > 0 else 0.5
-        # 1.0 is neutral viral reproduction threshold
-        rn_est = round(max(0.2, min(3.0, 1.0 + (fm_ratio - 0.5) * 1.5)), 4)
-        return (rn_est, 0.25)
-
+    return compute_rn_from_onset_counts(daily_onset_series(rows))

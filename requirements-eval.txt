@@ -1,0 +1,7 @@
+# Extra dependencies for the evaluation suite (python -m diverge.evaluation.run_all)
+-r requirements.txt
+scikit-learn>=1.3
+datasets>=2.18
+pyarrow>=14
+pytest>=8
+httpx>=0.27

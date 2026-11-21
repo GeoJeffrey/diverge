@@ -1,0 +1,71 @@
+{
+  "generated_at": "2026-11-21T17:25:17+00:00",
+  "environment": {
+    "python": "3.11.9",
+    "machine": "AMD64",
+    "os": "Windows",
+    "torch": "2.14.1+cu126",
+    "cuda_device": "NVIDIA GeForce RTX 3060 Laptop GPU"
+  },
+  "base_url": "http://127.0.0.1:8765",
+  "requests_per_endpoint": 2000,
+  "concurrency": 32,
+  "endpoints": {
+    "GET /health": {
+      "p50_ms": 123.44,
+      "p95_ms": 166.73,
+      "p99_ms": 179.78,
+      "mean_ms": 123.15,
+      "throughput_rps": 257.5,
+      "error_rate": 0.0
+    },
+    "GET /tickers": {
+      "p50_ms": 149.7,
+      "p95_ms": 192.99,
+      "p99_ms": 204.14,
+      "mean_ms": 151.27,
+      "throughput_rps": 209.9,
+      "error_rate": 0.0
+    },
+    "GET /outlook": {
+      "p50_ms": 169.34,
+      "p95_ms": 225.18,
+      "p99_ms": 251.43,
+      "mean_ms": 172.9,
+      "throughput_rps": 183.8,
+      "error_rate": 0.0
+    },
+    "GET /outlook/model": {
+      "p50_ms": 112.96,
+      "p95_ms": 138.05,
+      "p99_ms": 155.97,
+      "mean_ms": 108.09,
+      "throughput_rps": 294.0,
+      "error_rate": 0.0
+    },
+    "GET /ticker/INFY/simple": {
+      "p50_ms": 139.2,
+      "p95_ms": 167.39,
+      "p99_ms": 197.46,
+      "mean_ms": 136.21,
+      "throughput_rps": 233.2,
+      "error_rate": 0.0
+    },
+    "GET /ticker/INFY/outlook": {
+      "p50_ms": 142.88,
+      "p95_ms": 179.88,
+      "p99_ms": 198.04,
+      "mean_ms": 140.79,
+      "throughput_rps": 225.8,
+      "error_rate": 0.0
+    },
+    "GET /ticker/INFY (auth)": {
+      "p50_ms": 210.75,
+      "p95_ms": 245.48,
+      "p99_ms": 258.75,
+      "mean_ms": 208.51,
+      "throughput_rps": 152.5,
+      "error_rate": 0.0
+    }
+  }
+}

@@ -256,3 +256,20 @@ class NarrativePhylogeny(Base):
         PrimaryKeyConstraint("ticker", "window_start_utc"),
         Index("idx_phylogeny_ticker_time", "ticker", "window_start_utc"),
     )
+
+
+class TickerOutlook(Base):
+    __tablename__ = "ticker_outlook"
+
+    ticker = Column(String(32), nullable=False)
+    as_of_day = Column(String(10), nullable=False)
+    available = Column(Integer, nullable=False, default=0)
+    coverage_note = Column(Text, nullable=True)
+    payload = Column(Text, nullable=True)
+    model_version = Column(String(32), nullable=True)
+    generated_at = Column(String(50), nullable=False, default=utc_now_iso)
+
+    __table_args__ = (
+        PrimaryKeyConstraint("ticker", "as_of_day"),
+        Index("idx_outlook_ticker_day", "ticker", "as_of_day"),
+    )
