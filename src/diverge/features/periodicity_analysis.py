@@ -100,19 +100,27 @@ def _compute_ks_statistic(delta_seconds: List[float]) -> Optional[float]:
         return None
 
 
+def autocorrelation(arr: np.ndarray, n_lags: int) -> np.ndarray:
+    """Sample autocorrelation function for lags 0..n_lags (same estimator as statsmodels' acf)."""
+    x = np.asarray(arr, dtype=float) - np.mean(arr)
+    denom = float(np.dot(x, x))
+    if denom == 0.0:
+        return np.zeros(n_lags + 1)
+    n = len(x)
+    return np.array([np.dot(x[: n - k], x[k:]) / denom for k in range(n_lags + 1)])
+
+
 def _compute_acf_peak(series: List[int]) -> Tuple[Optional[float], Optional[float]]:
     """
     Compute autocorrelation (ACF) of binned post-count series.
     Returns (peak_lag_minutes, peak_strength) excluding lag=0.
     """
-    from statsmodels.tsa.stattools import acf
-
     arr = np.array(series, dtype=float)
     if len(arr) < 10 or arr.std() == 0:
         return None, None
     try:
         n_lags = min(len(arr) - 1, 50)
-        acf_values = acf(arr, nlags=n_lags, fft=True)
+        acf_values = autocorrelation(arr, n_lags)
         # Exclude lag 0 (always 1.0)
         acf_abs = np.abs(acf_values[1:])
         peak_lag_idx = int(np.argmax(acf_abs)) + 1  # +1 to map back to real lag
