@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 from diverge import config, storage, utils
-from diverge.pipeline import run_full_pipeline
+from diverge.pipeline import CRITICAL_PHASES, failed_phases, run_full_pipeline
 
 logger = utils.setup_logger("run_all_master")
 
@@ -26,6 +26,9 @@ logger = utils.setup_logger("run_all_master")
 def main():
     parser = argparse.ArgumentParser(description="Run the full Diverge pipeline once (phases 1-8).")
     parser.add_argument("--skip-scrape", action="store_true", help="Reuse existing posts; skip ingestion.")
+    parser.add_argument("--fail-on", choices=["any", "critical"], default="any",
+                        help=f"Exit non-zero if any phase fails (default), or only if a critical phase "
+                             f"({', '.join(CRITICAL_PHASES)}) fails. Scheduled runs use 'critical'.")
     args = parser.parse_args()
 
     status = run_full_pipeline(skip_scrape=args.skip_scrape)
@@ -33,7 +36,9 @@ def main():
     print("PHASE STATUS")
     for phase, result in status.items():
         print(f"  {phase:<18} {result}")
-    if any(v.startswith("failed") for v in status.values()):
+    failed = failed_phases(status, args.fail_on)
+    if failed:
+        print(f"FAILED ({args.fail_on}): {', '.join(failed)}")
         sys.exit(1)
 
 
