@@ -6,7 +6,7 @@ import { RiskMeter } from "@/design-system/components/Risk";
 import { Term } from "@/design-system/components/Term";
 import { TextLink } from "@/design-system/components/Controls";
 import { OutlookPanel } from "@/features/outlook/OutlookPanel";
-import { dateTime, riskFromFlag, RISK_EXPLAIN } from "@/lib/format";
+import { dateOnly, postsSince, riskFromFlag, RISK_EXPLAIN } from "@/lib/format";
 import { formatRiskFlag, INDEX_EXPLAIN, INDEX_LABELS, INDEX_ORDER, INDEX_SHORT, labelForIndexKey, labelForMutation } from "@/lib/labels";
 
 const CONFIDENCE_WORDS = { high_trust: "high", moderate: "moderate", low_trust: "low", insufficient_data: "not enough data" } as const;
@@ -49,7 +49,7 @@ function Transitions({ items }: { items: TickerAdvancedResponse["phylogeny_conte
             className="absolute -left-[29px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-bg"
             style={{ background: t.mutation_type === "new_risk_flag" ? "var(--down)" : t.mutation_type === "stable" ? "var(--text-3)" : "var(--text)" }}
           />
-          <p className="t-small">{dateTime(t.window_start_utc)}</p>
+          <p className="t-small">Reading of posts since {dateOnly(t.window_start_utc)}</p>
           <p className="mt-0.5 text-[0.9375rem] text-text">
             {labelForMutation(t.mutation_type)}
             {t.mutation_type === "dominant_index_shift" && typeof t.mutation_detail.from === "string" && typeof t.mutation_detail.to === "string" && (
@@ -120,7 +120,7 @@ export function Readings({ a, symbol }: { a: TickerAdvancedResponse; symbol: str
         </div>
         <Transitions items={a.phylogeny_context} />
       </section>
-      <p className="t-small">Window {dateTime(a.window_start_utc)}{a.window_end_utc ? ` to ${dateTime(a.window_end_utc)}` : ""}.</p>
+      <p className="t-small">{postsSince(a.window_start_utc, a.window_end_utc)}.</p>
     </div>
   );
 }

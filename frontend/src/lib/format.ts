@@ -84,6 +84,23 @@ export function dateTime(iso: string | null | undefined): string {
   return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}, ${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")} UTC`;
 }
 
+/** "2026-08-23T19:25:17Z" -> "23 Aug 2026" (UTC date). */
+export function dateOnly(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+
+/**
+ * The pipeline scores each reading over every post kept in its retention period, up to the moment
+ * it runs, so window_start_utc is where that look-back begins, not when the reading was taken.
+ */
+export function postsSince(startIso: string | null | undefined, endIso?: string | null): string {
+  if (!startIso) return "";
+  return endIso ? `Based on posts from ${dateOnly(startIso)} to ${dateOnly(endIso)}` : `Based on posts since ${dateOnly(startIso)}`;
+}
+
 export function int(n: number | null | undefined): string {
   return n === null || n === undefined ? "–" : n.toLocaleString("en-US");
 }
