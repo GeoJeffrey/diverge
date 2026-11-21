@@ -1,196 +1,134 @@
-# Diverge — Financial Narrative Intelligence System
+# Diverge: financial narrative intelligence
 
-A production-grade financial narrative intelligence and sentiment tracking platform with real-time multi-index computation, coordination and trust integrity scoring, post-level explainability traces, and a modern dual-mode React dashboard.
+[![CI](https://github.com/GeoJeffrey/diverge/actions/workflows/ci.yml/badge.svg)](https://github.com/GeoJeffrey/diverge/actions/workflows/ci.yml)
+![Python 3.11](https://img.shields.io/badge/python-3.11-blue) ![FastAPI](https://img.shields.io/badge/API-FastAPI-009688) ![React](https://img.shields.io/badge/UI-React%20%2B%20Vite-61dafb) ![License: MIT](https://img.shields.io/badge/license-MIT-green)
+
+**Diverge tracks how stories about a stock spread across retail social media and news. It tells you whether a story is organic or coordinated, and it measures whether those signals carry information that prices don't.**
+
+It collects posts from Reddit, StockTwits, Telegram, financial news RSS and Google Trends. It scores them with a FinBERT model fine-tuned on finance tweets. It then computes narrative indices such as an epidemiological *reproduction number* for how fast a story is recruiting new posters. Each signal is passed through an integrity layer that flags bot-like coordinated campaigns. Everything is served through a JWT-secured FastAPI backend and a React dashboard. Every model and index is checked by a reproducible evaluation suite.
 
 ---
 
-## 📁 Repository Structure
+## Results
 
-```text
-Diverge/
-├── docs/                      # Shared API contract & architecture specifications
-│   ├── openapi.json           # Frozen OpenAPI 3.0 specification
-│   ├── API_CONTRACT_NOTES.md  # Specification freeze notes & endpoint contract
-│   └── architecture.md        # System architecture and multi-phase pipeline flow
-├── src/diverge/               # Core Python application package
-│   ├── api/                   # FastAPI application, routers, schemas, dependencies
-│   │   └── routers/           # auth, health, tickers endpoints
-│   ├── auth/                  # JWT Bearer tokens & bcrypt password hashing
-│   ├── db/                    # SQLAlchemy engine, models, session management
-│   ├── indices/               # Phase 3: Financial indices (CLI, VDI, CASSI, Rn, CIRG)
-│   ├── integrity/             # Phase 4: Bot & inorganic coordination scoring
-│   ├── aggregation/           # Phase 5: Calibrated composite aggregation
-│   ├── explainability/        # Phase 6: Post-level reasoning traces & lineage
-│   ├── features/              # Phase 2: NLP sentiment, irony, periodicity features
-│   └── scrapers/              # Phase 1: Ingest scrapers (Reddit, StockTwits, Telegram, RSS, Trends)
-├── frontend/                  # Modern React + Vite dashboard
-│   ├── src/
-│   │   ├── auth/              # AuthProvider and token session management
-│   │   ├── components/        # UI components, IndexCard, TrustBadge, Layouts
-│   │   ├── lib/               # apiFetch client, approved label mappings
-│   │   ├── pages/             # Tickers, Advanced, Simple, Integrity, Explainability
-│   │   └── routes.tsx         # Route configuration & authenticated route guards
-│   ├── package.json           # Frontend dependencies & scripts
-│   ├── vite.config.ts         # Vite build configuration
-│   └── Dockerfile             # Multi-stage production Nginx container
-├── migrations/                # Alembic database migrations for PostgreSQL
-├── scripts/                   # Migration, database setup, and diagnostic utilities
-├── docker-compose.yml         # Full-stack container orchestration
-├── Dockerfile                 # Backend FastAPI container definition
-├── run_server.py              # API server launcher
-└── run_all.py                 # Pipeline runner (Scrapers -> Features -> Indices)
+Every number below is reproduced by `python -m diverge.evaluation.run_all`. The full tables are in **[reports/RESULTS.md](reports/RESULTS.md)**.
+
+**Coordinated-campaign detection**: 4,000 simulated 2-hour windows / 491k posts. Half contain an injected bot campaign (5-50% of traffic, paraphrased promo templates, scheduled posting with jitter). The negatives include organic news bursts with shared headline text.
+
+| Scorer | ROC-AUC | Precision | Recall | F1 |
+|---|---|---|---|---|
+| Original hand-weighted score | 0.657 | 1.000 | 0.005 | 0.010 |
+| **Learned scorer (now in the pipeline)** | **0.960** | **0.930** | **0.912** | **0.921** |
+
+- **MinHash + LSH near-duplicate search** (written from scratch, no dependency): **42× faster** than exhaustive comparison on 4,000 posts, with 100% pair recall.
+- The ablation shows that cross-account near-duplicate text carries almost all of the detection signal. The timing tests (KS vs Poisson, ACF) added nothing measurable.
+- Main failure mode: 17% false positives on organic news bursts. See [limitations](docs/architecture.md#known-limitations).
+
+**Sentiment model** (held-out finance tweets) and **predictive backtest** (~1.7M tweets, 2015-2019, walk-forward against a price-only baseline): run `python -m diverge.evaluation.run_all` on a GPU machine. The results are written to `reports/RESULTS.md`.
+
+---
+
+## What's inside
+
+```mermaid
+flowchart LR
+    A[Reddit · StockTwits · Telegram · RSS · Trends] --> B[(raw posts)]
+    B --> C[FinBERT sentiment<br/>timing features]
+    C --> D[Narrative indices<br/>Rn · CLI · VDI · CIRG · CASSI]
+    C --> E[Integrity layer<br/>MinHash-LSH · learned bot scorer]
+    D & E --> F[Trust-weighted composite<br/>+ explainability traces]
+    F --> G[FastAPI + JWT<br/>PostgreSQL]
+    G --> H[React dashboard]
 ```
 
----
+| Signal | What it measures | How |
+|---|---|---|
+| **Rn**, contagion | Is the story recruiting new posters faster than it loses them? | Renewal-equation estimator (Cori et al. 2013) on first-mention onsets, with a 95% credible interval |
+| **CLI**, capitulation | Share of "I'm out, sold everything" posts | Lexicon classifier |
+| **VDI**, language divergence | English vs Hinglish sentiment gap | Pooled z-scores |
+| **CIRG**, reality check | Investor hype vs consumer reviews | Pooled z-scores |
+| **CASSI**, spillover | How much one stock's sentiment is driven by others | VAR forecast-error variance decomposition |
+| **Coordination** | Probability that the window contains a coordinated campaign | Logistic model on duplicate, timing and variance features |
 
-## 🛠️ Prerequisites
+Every index returns a real value or `null` with a coverage note. No placeholder values are filled in.
 
-- **Python**: 3.10+ (Python 3.11 recommended)
-- **Node.js**: 18+ (Node.js 20 recommended) & npm
-- **Database**: PostgreSQL 14+ (or automatic SQLite fallback for offline execution)
-- **Docker & Docker Compose** (optional, for containerized multi-service deployment)
+Full methodology, evaluation design and limitations: **[docs/architecture.md](docs/architecture.md)**.
 
----
+## Tech stack
 
-## 🚀 Quick Start (Local Setup)
+Python · PyTorch · Hugging Face Transformers · scikit-learn · statsmodels · pandas · FastAPI · SQLAlchemy · Alembic · PostgreSQL · JWT/bcrypt · APScheduler · React 19 · TypeScript · Vite · Tailwind · Recharts · Docker · GitHub Actions · Railway · Vercel
 
-### 1. Backend & Database Setup
-
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/GeoJeffrey/Diverge.git
-   cd Diverge
-   ```
-
-2. **Install Python dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   pip install -e .
-   ```
-
-3. **Configure Database**:
-   - **PostgreSQL (Recommended)**: Set the connection string in your environment:
-     ```powershell
-     # Windows PowerShell
-     $env:DATABASE_URL="postgresql+psycopg2://postgres:postgres@localhost:5432/diverge"
-     ```
-     ```bash
-     # Linux / macOS
-     export DATABASE_URL="postgresql+psycopg2://postgres:postgres@localhost:5432/diverge"
-     ```
-     Apply database migrations (Note: Migrations run automatically on Railway container startup, but can also be applied manually):
-     ```bash
-     alembic upgrade head
-     ```
-     To run migrations against Railway PostgreSQL from your local terminal:
-     ```bash
-     DATABASE_URL="<your_railway_postgres_connection_url>" alembic upgrade head
-     ```
-   - **SQLite Fallback**: If `DATABASE_URL` is unset, Diverge automatically stores data in `data/diverge_raw.db`.
-
-4. **Launch the API Server**:
-   ```bash
-   python run_server.py --port 8000 --reload
-   ```
-   - **API Health**: [http://localhost:8000/health](http://localhost:8000/health)
-   - **Interactive API Documentation (Swagger)**: [http://localhost:8000/docs](http://localhost:8000/docs)
-   - **OpenAPI 3.0 Schema**: [http://localhost:8000/openapi.json](http://localhost:8000/openapi.json)
-
----
-
-### 2. Frontend Setup (React + Vite)
-
-1. **Navigate to the frontend directory**:
-   ```bash
-   cd frontend
-   ```
-
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-
-3. **Configure environment**:
-   Copy `.env.example` to `.env` (or configure as needed):
-   ```bash
-   cp .env.example .env
-   ```
-   *Default: `VITE_API_BASE_URL=http://localhost:8000`* (set to `mock` for standalone offline fixture testing).
-
-4. **Start the development server**:
-   ```bash
-   npm run dev
-   ```
-   Open **[http://localhost:5173](http://localhost:5173)** in your browser.
-
-5. **Build for production**:
-   ```bash
-   npm run build
-   ```
-
----
-
-## 🐳 Docker Deployment
-
-To spin up PostgreSQL, the FastAPI backend, and the React frontend in isolated containers:
+## Quick start
 
 ```bash
-docker compose up --build
+git clone https://github.com/GeoJeffrey/diverge.git && cd diverge
+python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
+pip install -r requirements.txt && pip install -e .
+
+python run_all.py                 # scrape → features → indices → integrity → composite
+python run_server.py --port 8000  # API on http://localhost:8000/docs
+cd frontend && npm install && npm run dev               # dashboard on http://localhost:5173
 ```
 
-- **Frontend App**: `http://localhost:5173`
-- **Backend API**: `http://localhost:8000`
-- **PostgreSQL**: `localhost:5432`
+Or run everything in containers: `docker compose up --build`. Without `DATABASE_URL`, the app uses a local SQLite file.
 
----
+## Reproduce the evaluation
 
-## 🧪 Verification & Test Suite
-
-Run the full Python test suite:
 ```bash
-pytest -v
-```
-*(63 passed unit and integration tests covering indices math, sentiment features, integrity scoring, and explainability).*
+pip install -r requirements-eval.txt
+python -m diverge.evaluation.run_all            # full run, ~1 h on a laptop GPU
+python -m diverge.evaluation.run_all --quick    # CPU smoke run, ~10 min
 
-Run backend concurrency verification (20 concurrent requests):
+# API latency (with the server running in another terminal)
+python scripts/bench_api.py --requests 2000 --concurrency 32
+python -m diverge.evaluation.run_all --render   # adds the latency table to RESULTS.md
+```
+
+| Step | Module | Data |
+|---|---|---|
+| Bot-campaign detection | `evaluation/coordination_benchmark.py` | Simulated, with ground truth (offline) |
+| FinBERT fine-tuning | `evaluation/finetune_sentiment.py` | `zeroshot/twitter-financial-news-sentiment` train |
+| Sentiment benchmark | `evaluation/sentiment_benchmark.py` | Same dataset, held-out validation split |
+| Predictive backtest | `evaluation/backtest.py` | `mjw/stock_market_tweets` + Yahoo Finance; or `--source db` for your own scraped data |
+
+## API
+
+| Method | Endpoint | Auth |
+|---|---|:-:|
+| `GET` | `/health` | |
+| `GET` | `/tickers`: monitored tickers with composite score and trust badge | |
+| `GET` | `/ticker/{symbol}/simple`: plain-language summary card | |
+| `POST` | `/auth/signup`, `/auth/login`, `/auth/refresh` | |
+| `GET` | `/auth/me` | ✓ |
+| `GET` | `/ticker/{symbol}`: all indices, coordination score, risk flags | ✓ |
+| `GET` | `/ticker/{symbol}/reasoning`: post-level reasoning traces | ✓ |
+
+The contract is frozen in [`docs/openapi.json`](docs/openapi.json); `scripts/diff_openapi.py` detects drift.
+
+## Tests
+
 ```bash
-python scripts/test_concurrency.py
+pytest -q     # 77 tests: index maths, Rn recovery, LSH vs brute force, backtest leakage checks, API storage
 ```
 
-Run comprehensive API smoke tests across all 7 core endpoints:
-```bash
-python scripts/smoke_test_api.py
+CI runs a secret scan, the test suite, an offline benchmark smoke test and the frontend build on every push.
+
+## Project layout
+
+```
+src/diverge/
+  scrapers/        ingest (Reddit, StockTwits, Telegram, RSS, Trends, reviews)
+  features/        sentiment, capitulation, sarcasm, language, timing/periodicity
+  indices/         Rn, CLI, VDI, CIRG, CASSI
+  integrity/       MinHash-LSH, coordination scorer (+ learned weights)
+  aggregation/     composite score
+  explainability/  reasoning traces, narrative phylogeny
+  evaluation/      benchmarks, backtest, report generator
+  api/ db/ auth/   FastAPI app, SQLAlchemy models, JWT
+frontend/          React + Vite dashboard
+reports/           generated results (RESULTS.md + JSON)
 ```
 
----
+## License
 
-## 📊 Core API Endpoints
-
-| Method | Endpoint | Description | Auth Required |
-|---|---|---|:---:|
-| `GET` | `/health` | Service health status and database connectivity | No |
-| `GET` | `/tickers` | Monitored equities list with composite scores & trust badges | No |
-| `GET` | `/ticker/{symbol}/simple` | Plain-language narrative synthesis card | No |
-| `POST` | `/auth/signup` | Trader account registration | No |
-| `POST` | `/auth/login` | Authentication and JWT Bearer token generation | No |
-| `GET` | `/auth/me` | Authenticated user profile | **Yes** |
-| `GET` | `/ticker/{symbol}` | Diagnostic view: all 5 financial indices, trust, and risk flags | **Yes** |
-| `GET` | `/ticker/{symbol}/reasoning` | Post-level reasoning traces and driver categorization | **Yes** |
-
----
-
-## 📈 Financial Indices Reference
-
-Diverge computes 5 distinct narrative and sentiment indices adhering strictly to frozen labels and null guards:
-
-1. **Contagion Core (Rn)**: Epidemiological viral reproduction rate of social narrative spread.
-2. **Reality Check (CIRG)**: Statistical divergence between retail/consumer product reviews and market hype.
-3. **Capitulation Signal (CLI)**: Panic density and stop-loss liquidation language across investor communities.
-4. **Cross-Market Spillover (CASSI)**: Cross-asset sentiment transmission and retail focus spillover.
-5. **Language Divergence (VDI)**: Sentiment spread between regional vernacular discussion and institutional English channels.
-
----
-
-## 📄 License
-
-MIT License. See [LICENSE](LICENSE) for details.
+MIT
