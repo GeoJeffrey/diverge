@@ -5,3 +5,4 @@ datasets>=2.18
 pyarrow>=14
 yfinance>=0.2.40
 pytest>=8
+httpx>=0.27

@@ -185,6 +185,17 @@ CREATE TABLE IF NOT EXISTS narrative_phylogeny (
 
 CREATE INDEX IF NOT EXISTS idx_phylogeny_ticker_time
     ON narrative_phylogeny (ticker, window_start_utc);
+
+CREATE TABLE IF NOT EXISTS ticker_outlook (
+    ticker          TEXT NOT NULL,
+    as_of_day       TEXT NOT NULL,     -- trading day whose close the outlook is made after
+    available       INTEGER NOT NULL,  -- 0 when the model could not be applied
+    coverage_note   TEXT,              -- why not, when available = 0
+    payload         TEXT,              -- JSON from diverge.outlook.model.predict
+    model_version   TEXT,
+    generated_at    TEXT NOT NULL,
+    PRIMARY KEY (ticker, as_of_day)
+);
 """
 
 
@@ -1048,3 +1059,57 @@ def get_narrative_phylogeny_for_ticker(
 
 
 
+
+
+# ---------------------------------------------------------
+# Next-day outlook
+# ---------------------------------------------------------
+def insert_outlooks(rows: List[Dict[str, Any]], db_path: Path = config.DB_PATH) -> int:
+    """Insert or replace next-day outlook rows. Returns number of rows written."""
+    if not rows:
+        return 0
+    conn = get_connection(db_path)
+    with conn:
+        conn.executemany(
+            """
+            INSERT OR REPLACE INTO ticker_outlook
+                (ticker, as_of_day, available, coverage_note, payload, model_version, generated_at)
+            VALUES (:ticker, :as_of_day, :available, :coverage_note, :payload, :model_version, :generated_at)
+            """,
+            rows,
+        )
+    conn.close()
+    return len(rows)
+
+
+def get_social_posts_with_sentiment(db_path: Path = config.DB_PATH, days: int = 150) -> List[Dict[str, Any]]:
+    """Social posts (news and search-trend rows excluded) joined with their sentiment label."""
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    conn = get_connection(db_path)
+    rows = conn.execute(
+        """
+        SELECT r.ticker, r.account_id, r.timestamp_utc, r.raw_text, r.upvotes, t.sentiment_label
+        FROM raw_posts r JOIN text_features t ON t.post_id = r.post_id
+        WHERE r.ticker IS NOT NULL
+          AND r.platform NOT IN ('rss_news', 'google_trends')
+          AND r.timestamp_utc >= ?
+        """,
+        (cutoff,),
+    ).fetchall()
+    conn.close()
+    keys = ["ticker", "account_id", "timestamp_utc", "raw_text", "upvotes", "sentiment_label"]
+    return [dict(zip(keys, r)) for r in rows]
+
+
+def get_latest_confidence_flags(db_path: Path = config.DB_PATH) -> Dict[str, str]:
+    """Most recent coordination confidence_flag per ticker."""
+    conn = get_connection(db_path)
+    rows = conn.execute(
+        """
+        SELECT c.ticker, c.confidence_flag FROM coordination_scores c
+        JOIN (SELECT ticker, MAX(window_start_utc) AS w FROM coordination_scores GROUP BY ticker) m
+          ON m.ticker = c.ticker AND m.w = c.window_start_utc
+        """
+    ).fetchall()
+    conn.close()
+    return {t: f for t, f in rows if f}

@@ -28,10 +28,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.events import EVENT_JOB_ERROR, EVENT_JOB_MISSED, EVENT_JOB_EXECUTED
 from diverge import utils
-from diverge.scrapers import run_phase1
-from diverge.features import run_phase2
-from diverge.indices import run_phase3
-from diverge import storage, config
+from diverge.pipeline import run_full_pipeline
 
 LOG_FILE = PROJECT_ROOT / "diverge_pipeline_scheduler.log"
 
@@ -47,41 +44,16 @@ logger = logging.getLogger("diverge_pipeline_scheduler")
 
 
 def run_pipeline_job():
-    """Execute complete ingest pipeline: Phase 1 -> Phase 2 -> Phase 3."""
-    start_time = datetime.now(timezone.utc)
-    logger.info(f"=== [START] Diverge Ingestion Pipeline Run at {start_time.isoformat()} ===")
-    
-    try:
-        # 1. Phase 1: Scrapers
-        logger.info("Executing Phase 1: Data Collection Scrapers...")
-        phase1_main = run_phase1.run_pipeline()
-        logger.info("Phase 1 completed successfully.")
-    except Exception as e:
-        logger.error(f"[ERROR in Phase 1 Scrapers]: {e}", exc_info=True)
-        # Continue to Phase 2 if existing data is present
-    
-    try:
-        # Check raw posts before Phase 2
-        raw_counts = storage.count_by_platform()
-        total_raw = sum(raw_counts.values()) if raw_counts else 0
-        if total_raw == 0:
-            logger.warning("[WARNING] raw_posts table is empty. Skipping Phase 2/3 calculation.")
-            return
-
-        # 2. Phase 2: Feature Extraction
-        logger.info(f"Executing Phase 2: Feature Extraction across {total_raw} raw posts...")
-        run_phase2.run_feature_pipeline()
-        logger.info("Phase 2 completed successfully.")
-        
-        # 3. Phase 3: Financial Indices
-        logger.info("Executing Phase 3: Financial Indices Calculation...")
-        run_phase3.run_phase3_pipeline()
-        logger.info("Phase 3 completed successfully.")
-        
-        duration = (datetime.now(timezone.utc) - start_time).total_seconds()
-        logger.info(f"=== [SUCCESS] Diverge Ingestion Pipeline completed in {duration:.2f}s ===")
-    except Exception as e:
-        logger.error(f"[CRITICAL PIPELINE FAILURE]: {e}", exc_info=True)
+    """Execute the complete pipeline (ingest -> ... -> outlook -> publish)."""
+    start = datetime.now(timezone.utc)
+    logger.info(f"=== [START] Diverge pipeline run at {start.isoformat()} ===")
+    status = run_full_pipeline()
+    duration = (datetime.now(timezone.utc) - start).total_seconds()
+    failed = [k for k, v in status.items() if v.startswith("failed")]
+    if failed:
+        logger.error(f"=== [DONE WITH FAILURES] {failed} in {duration:.0f}s ===")
+    else:
+        logger.info(f"=== [SUCCESS] pipeline completed in {duration:.0f}s ===")
 
 
 def job_listener(event):

@@ -1,2 +1,0 @@
-"""Diverge sub-package."""
-
