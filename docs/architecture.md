@@ -59,3 +59,6 @@ flowchart LR
 - The tweet backtest covers 5 US mega-caps. Results may not transfer to the Indian tickers the live scrapers track until enough history has been collected (`--source db`).
 - Direction prediction for liquid large caps is near chance; the project does not claim tradeable alpha. The outlook shows its historical accuracy next to every call for this reason.
 - The outlook model is trained on US large caps and applied live to NSE and US tickers, so live accuracy can differ from the recorded track record.
+- Reddit's public JSON/RSS endpoints currently answer unauthenticated requests with HTTP 403/429, so live posts come mainly from StockTwits, Telegram, RSS news and Google Trends. The scraper respects these responses and does not work around them.
+- The tweet dataset ends on 2019-12-31, so the 2020 test days in the backtest (2-8 January) carry no social data, and the permutation importance in `reports/RESULTS.md`, computed on that final test year, is 0 for every social feature by construction.
+- The API latency in `reports/RESULTS.md` was measured on a Windows laptop against the local SQLite store, not the production PostgreSQL database.

@@ -22,11 +22,58 @@ Every number below is reproduced by `python -m diverge.evaluation.run_all`. The 
 | Original hand-weighted score | 0.657 | 1.000 | 0.005 | 0.010 |
 | **Learned scorer (now in the pipeline)** | **0.960** | **0.930** | **0.912** | **0.921** |
 
-- **MinHash + LSH near-duplicate search** (written from scratch, no dependency): **42× faster** than exhaustive comparison on 4,000 posts, with 100% pair recall.
+- **MinHash + LSH near-duplicate search** (written from scratch, no dependency): **40× faster** than exhaustive comparison on 4,000 posts (15.7 s → 0.39 s), with 100% pair recall.
 - The ablation shows that cross-account near-duplicate text carries almost all of the detection signal. The timing tests (KS vs Poisson, ACF) added nothing measurable.
 - Main failure mode: 17% false positives on organic news bursts. See [limitations](docs/architecture.md#known-limitations).
 
-**Sentiment model** (held-out finance tweets), **predictive backtest** (~1.7M tweets, 2015-2019, walk-forward against a price-only baseline) and the **next-day outlook's track record**: run `python -m diverge.evaluation.run_all` on a GPU machine. The results are written to `reports/RESULTS.md` and shown in the dashboard's *Model accuracy* page.
+**Sentiment model**: `zeroshot/twitter-financial-news-sentiment`, official validation split as the test set (2,388 finance tweets; trained on 9,543).
+
+| Model | Accuracy | Macro-F1 | Texts/sec |
+|---|---|---|---|
+| Keyword lexicon (baseline) | 0.675 | 0.438 | 78,284 |
+| TF-IDF + logistic regression | 0.827 | 0.771 | 60,006 |
+| FinBERT zero-shot (ProsusAI/finbert) | 0.725 | 0.668 | 1,307 |
+| **FinBERT fine-tuned on finance tweets (used by the pipeline)** | **0.879** | **0.845** | 1,427 |
+
+**Predictive backtest**: 1,700,641 tweets → 6,320 ticker-days (AAPL, AMZN, GOOG, MSFT, TSLA, 2015-2019), sentiment from the fine-tuned FinBERT. Expanding-window walk-forward by year (test years 2016-2020), against a price-only HAR baseline.
+
+| Next-day volatility (\|return\|) | OOS R² price-only | OOS R² + narrative | MSE reduction | Diebold-Mariano p |
+|---|---|---|---|---|
+| linear | 0.125 | 0.172 | +5.4% | 0.0005 |
+| gbm | 0.113 | 0.145 | +3.6% | 0.0073 |
+
+| Week-ahead volatility (mean \|return\| over 5 days) | OOS R² price-only | OOS R² + narrative | MSE reduction | Diebold-Mariano p |
+|---|---|---|---|---|
+| linear | 0.299 | 0.304 | +0.7% | 0.2508 |
+| gbm | 0.262 | 0.251 | -1.6% | 0.9371 |
+
+Social signals help the **next-day** volatility forecast significantly; at the **week-ahead** horizon they add nothing measurable.
+
+**Big-move alerts** (next-day \|return\| > 2× trailing 22-day mean; alerts = top 10% of ticker-days by predicted risk each year):
+
+| Alerting on | ROC-AUC | Alert precision | Base rate | Lift | Share of big moves caught |
+|---|---|---|---|---|---|
+| Price history only | 0.613 | 23.4% | 13.2% | 1.78x | 18% |
+| **Price + social signals** | **0.645** | **29.8%** | 13.2% | **2.26x** | 23% |
+| Simple rule: top-decile attention spike | — | 26.0% | 13.3% | 1.95x | — |
+
+**Event study**: on top-decile attention-shock days (635), next-day \|return\| averaged 1.94% vs 1.19% otherwise: **1.63×** (bootstrap 95% CI 1.47-1.80).
+
+**Direction**: next-day excess-return direction AUC is 0.516 (linear) / 0.523 (gbm) with social features, i.e. close to a coin flip, as expected for liquid large caps.
+
+**Next-day outlook track record** (walk-forward test 2016-01-04 to 2020-01-08, 5,055 ticker-days; shown in the dashboard's *Model accuracy* page):
+
+| Metric | Value |
+|---|---|
+| Direction accuracy, all days | 51.6% (always-up: 54.0%) |
+| Direction ROC-AUC / Brier | 0.507 / 0.2505 |
+| Accuracy of 'leans up/down' calls | 52.6% on 23% of days |
+| Move size OOS R² (price-only → with social) | 0.125 → 0.177 |
+| 'Bigger move than usual' precision | 49.3% vs base rate 39.2% (1.26x lift) |
+
+Direction accuracy is **at chance and below the always-up baseline**: the outlook's direction call is not a predictive edge, which is why its track record is shown next to every call. Its useful part is the expected move size.
+
+The tweet dataset ends on 2019-12-31, so the 2020 test days (2-8 January) have no social data. Real-world validation of the bot detector on blind hand-labelled windows is **pending** until the deployed worker has collected enough posts.
 
 ---
 
@@ -124,7 +171,7 @@ The contract is frozen in [`docs/openapi.json`](docs/openapi.json); `scripts/dif
 ## Tests
 
 ```bash
-pytest -q     # 86 tests: index maths, Rn recovery, LSH vs brute force, backtest leakage checks, outlook train/serve parity, API
+pytest -q     # 91 tests: index maths, Rn recovery, LSH vs brute force, backtest leakage checks, outlook train/serve parity, API
 ```
 
 CI runs a secret scan, the test suite, an offline benchmark smoke test and the frontend build on every push.
