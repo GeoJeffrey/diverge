@@ -259,3 +259,22 @@ if __name__ == "__main__":
     unittest.main()
 
 
+
+
+class TestIncrementalTextFeatures(unittest.TestCase):
+    def test_only_unscored_posts_are_returned(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "t.db"
+            conn = storage.get_connection(db)
+            for pid in ("p1", "p2"):
+                conn.execute("INSERT INTO raw_posts VALUES (?,?,?,?,?,?,?,?,?)",
+                             (pid, "a", "2026-01-01T00:00:00", "c", "INFY", "infosys looks strong", 0, "reddit", "2026-01-01"))
+            conn.commit()
+            conn.close()
+            self.assertEqual(len(storage.get_all_posts_for_text(db_path=db)), 2)
+            storage.insert_text_features([{
+                "post_id": "p1", "sentiment_score": 0.5, "sentiment_label": "bullish", "capitulation_flag": 0,
+                "capitulation_confidence": 0.0, "is_sarcastic": 0, "irony_adjusted_sentiment": 0.5,
+                "conviction_hedge_ratio": None, "language": "en", "computed_at": "2026-01-01",
+            }], db_path=db)
+            self.assertEqual([r[0] for r in storage.get_all_posts_for_text(db_path=db)], ["p2"])

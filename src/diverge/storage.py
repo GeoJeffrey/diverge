@@ -385,15 +385,17 @@ def insert_text_features(rows: List[Dict[str, Any]], db_path: Path = config.DB_P
 
 def get_all_posts_for_text(db_path: Path = config.DB_PATH) -> List[Tuple[str, str, str]]:
     """
-    Select post_id, raw_text, ticker from raw_posts for text feature extraction.
+    Select post_id, raw_text, ticker for posts that have no text features yet (incremental: each
+    pipeline run scores only newly scraped posts instead of re-running FinBERT on the whole store).
     Deliberately omits account_id and timestamp_utc to keep the text track blind to timing data.
     """
     conn = get_connection(db_path)
     rows = conn.execute(
         """
-        SELECT post_id, raw_text, ticker
-        FROM raw_posts
-        WHERE raw_text IS NOT NULL AND raw_text != ''
+        SELECT r.post_id, r.raw_text, r.ticker
+        FROM raw_posts r
+        LEFT JOIN text_features t ON t.post_id = r.post_id
+        WHERE r.raw_text IS NOT NULL AND r.raw_text != '' AND t.post_id IS NULL
         """
     ).fetchall()
     conn.close()

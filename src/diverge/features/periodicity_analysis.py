@@ -199,59 +199,69 @@ def _compute_onset_dispersion(timing_rows: List[Dict], window_start: datetime, w
     return round(dispersion, 6)
 
 
-def analyse_ticker(ticker: str, bins: List[Tuple[datetime, int]], timing_rows: List[Dict]) -> List[Dict[str, Any]]:
+def analyse_ticker(
+    ticker: str,
+    bins: List[Tuple[datetime, int]],
+    timing_rows: List[Dict],
+    since: Optional[datetime] = None,
+) -> List[Dict[str, Any]]:
     """
-    For a single ticker, compute periodicity statistics in rolling WINDOW_HOURS windows.
-    Returns list of dicts for insert_periodicity_stats.
+    For a single ticker, compute periodicity statistics in rolling WINDOW_HOURS windows sliding
+    by BIN_MINUTES. Windows are located with binary search over the time-sorted bins and posts,
+    so the cost is linear in the number of windows instead of windows x history.
+    since: only compute windows starting at or after this time (incremental runs).
     """
     if not bins:
         return []
 
-    results = []
-    all_bin_times = [b[0] for b in bins]
+    from bisect import bisect_left
+
+    bins = sorted(bins)
+    bin_times = [b[0] for b in bins]
+    prefix = [0]
+    for _, cnt in bins:
+        prefix.append(prefix[-1] + cnt)
+
+    parsed = sorted(
+        ((dt, row) for row in timing_rows if (dt := _parse_dt(row["timestamp_utc"])) is not None),
+        key=lambda x: x[0],
+    )
+    post_times = [dt for dt, _ in parsed]
+
     window_td = timedelta(hours=WINDOW_HOURS)
     bin_td = timedelta(minutes=BIN_MINUTES)
+    n_slots = int(window_td.total_seconds() / (BIN_MINUTES * 60))
 
-    # Build set of distinct window starts (every BIN_MINUTES across the full range)
-    min_time = all_bin_times[0]
-    max_time = all_bin_times[-1]
+    current_start = bin_times[0]
+    if since is not None and since > current_start:
+        steps = int((since - current_start) / bin_td)
+        current_start += steps * bin_td
+    max_time = bin_times[-1]
 
-    current_start = min_time
-    while current_start + window_td <= max_time + window_td:
+    results = []
+    while current_start <= max_time:
         window_end = current_start + window_td
-
-        # Get bins in this window
-        window_bins = [(dt, cnt) for dt, cnt in bins if current_start <= dt < window_end]
-        total_posts = sum(cnt for _, cnt in window_bins)
+        lo, hi = bisect_left(bin_times, current_start), bisect_left(bin_times, window_end)
+        total_posts = prefix[hi] - prefix[lo]
 
         if total_posts < MIN_POSTS_PER_WINDOW:
-            logger.debug(
-                f"Skipping window {current_start.isoformat()} for {ticker}: "
-                f"only {total_posts} posts (need {MIN_POSTS_PER_WINDOW})"
-            )
             current_start += bin_td
             continue
 
-        # Build dense count series for this window
-        n_slots = int(window_td.total_seconds() / (BIN_MINUTES * 60))
         series = [0] * n_slots
-        for bin_dt, cnt in window_bins:
+        for bin_dt, cnt in bins[lo:hi]:
             slot = int((bin_dt - current_start).total_seconds() / (BIN_MINUTES * 60))
             if 0 <= slot < n_slots:
                 series[slot] = cnt
 
-        # Get delta_seconds for timing rows in this window
-        deltas = []
-        for row in timing_rows:
-            dt = _parse_dt(row["timestamp_utc"])
-            if dt and current_start <= dt < window_end:
-                if row["delta_seconds"] is not None:
-                    deltas.append(row["delta_seconds"])
+        plo, phi = bisect_left(post_times, current_start), bisect_left(post_times, window_end)
+        window_rows = [row for _, row in parsed[plo:phi]]
+        deltas = [r["delta_seconds"] for r in window_rows if r["delta_seconds"] is not None]
 
         ks_stat = _compute_ks_statistic(deltas) if deltas else None
         acf_lag, acf_strength = _compute_acf_peak(series)
         dominant_freq = _compute_fft_dominant_period(series)
-        dispersion = _compute_onset_dispersion(timing_rows, current_start, window_end)
+        dispersion = _compute_onset_dispersion(window_rows, current_start, window_end)
 
         results.append({
             "ticker": ticker,
@@ -263,15 +273,24 @@ def analyse_ticker(ticker: str, bins: List[Tuple[datetime, int]], timing_rows: L
             "dominant_frequency_minutes": dominant_freq,
             "onset_dispersion_index": dispersion,
         })
-
-        current_start += bin_td  # slide by one bin
+        current_start += bin_td
 
     return results
 
 
-def run(db_path: Path = config.DB_PATH) -> int:
+def _latest_window_start(ticker: str, db_path: Path) -> Optional[datetime]:
+    conn = storage.get_connection(db_path)
+    row = conn.execute(
+        "SELECT MAX(window_start_utc) FROM periodicity_stats WHERE ticker = ?", (ticker,)
+    ).fetchone()
+    conn.close()
+    return _parse_dt(row[0]) if row and row[0] else None
+
+
+def run(db_path: Path = config.DB_PATH, full: bool = False) -> int:
     """
-    Execute periodicity analysis for all tickers.
+    Execute periodicity analysis for all tickers. Incremental by default: windows already stored
+    are skipped, except the last WINDOW_HOURS, which may have gained late-arriving posts.
     Returns count of periodicity_stats rows written.
     """
     logger.info("Starting periodicity analysis...")
@@ -285,7 +304,9 @@ def run(db_path: Path = config.DB_PATH) -> int:
     for ticker, bins in ticker_bins.items():
         logger.info(f"Analysing periodicity for {ticker} ({len(bins)} bins)...")
         timing_rows = _load_post_timing_for_ticker(ticker, db_path)
-        rows = analyse_ticker(ticker, bins, timing_rows)
+        latest = None if full else _latest_window_start(ticker, db_path)
+        since = latest - timedelta(hours=WINDOW_HOURS) if latest else None
+        rows = analyse_ticker(ticker, bins, timing_rows, since=since)
         logger.info(f"  -> {len(rows)} windows computed for {ticker}.")
         all_results.extend(rows)
 
