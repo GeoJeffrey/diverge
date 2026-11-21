@@ -14,7 +14,8 @@ $py = ".\.venv\Scripts\python.exe"
 & $py -m pip install --upgrade pip | Out-Null
 
 # CUDA build of PyTorch for the RTX GPU (skipped if a CUDA build is already installed)
-$hasCuda = & $py -c "import torch,sys; sys.stdout.write(str(torch.cuda.is_available()))" 2>$null
+# Must not write to stderr when torch is missing: Windows PowerShell 5.1 + "Stop" turns native stderr into a fatal error.
+$hasCuda = & $py -c "import importlib.util,sys; sys.stdout.write(str(importlib.util.find_spec('torch') is not None and __import__('torch').cuda.is_available()))"
 if ($hasCuda -ne "True") {
     Write-Host "Installing PyTorch with CUDA 12.1..."
     & $py -m pip install torch --index-url https://download.pytorch.org/whl/cu121
