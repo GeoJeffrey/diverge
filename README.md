@@ -1,15 +1,115 @@
-# Diverge: financial narrative intelligence
+# Diverge
+
+**What social-media chatter says about tomorrow's stock move, with the reasons, the bot check and the track record next to every call.**
 
 [![CI](https://github.com/GeoJeffrey/diverge/actions/workflows/ci.yml/badge.svg)](https://github.com/GeoJeffrey/diverge/actions/workflows/ci.yml)
 ![Python 3.11](https://img.shields.io/badge/python-3.11-blue) ![FastAPI](https://img.shields.io/badge/API-FastAPI-009688) ![React](https://img.shields.io/badge/UI-React%20%2B%20Vite-61dafb) ![License: MIT](https://img.shields.io/badge/license-MIT-green)
 
-**Diverge reads public sentiment about a stock and estimates what happens next: whether it is more likely to close up or down tomorrow, and whether to expect a bigger move than usual. Every estimate comes with the reasons behind it and the model's measured track record.**
+![Diverge in action: a next-day outlook drawn as a fork, switching between stocks, the market overview, a ticker page and the track record](docs/demo.gif)
 
-It collects posts from Reddit, StockTwits, Telegram, financial news RSS and Google Trends. It scores them with a FinBERT model fine-tuned on finance tweets. It then turns them into daily signals: sentiment shifts, attention spikes, bull/bear disagreement, and an epidemiological *reproduction number* for how fast a story is recruiting new posters. An integrity layer flags bot-like coordinated campaigns and pulls the estimate toward 50/50 when the conversation looks inorganic. Everything is served through a JWT-secured FastAPI backend and a React web app. Every model is checked by a reproducible, walk-forward evaluation suite.
+**[Live site](https://diverge-three.vercel.app)** · **[API docs](https://diverge-api.onrender.com/docs)** · [How it works](#how-it-works) · [Results](#results) · [Run it yourself](#run-it-locally) · [Deploy your own](DEPLOY.md)
+
+---
+
+## What it does
+
+Diverge follows public posts about 16 stocks on Dalal Street (NSE) and Wall Street, and for each one answers three questions:
+
+1. **Which way tomorrow?** The chance the stock closes higher, and how sure it is.
+2. **How big a move?** The expected size of tomorrow's move compared with the stock's usual move.
+3. **Is the buzz real?** Whether the conversation looks organic or like a coordinated (bot or copy-paste) campaign. If it looks coordinated, the estimate is pulled toward 50/50.
+
+Every call shows the inputs that pushed it, a disclaimer, and how often calls like it were right on data the model had never seen.
 
 > **Honest framing.** Next-day *direction* is close to a coin flip for liquid stocks, and Diverge shows exactly how close next to every call. Social attention is much better at predicting *how much* a stock will move, and that is where most of the signal is.
 
----
+### Reading the fork
+
+The web app draws each call as a **fork**: today's line splits into an up and a down branch.
+
+- **Thicker branch** = the likelier direction. A 53/47 call looks almost symmetric, which is the honest picture.
+- **How far the branches spread** = the expected move size; the **dashed fork** behind it is the stock's typical move.
+- There is no price axis: it is a probability picture, not a price forecast.
+
+## Try it
+
+- **Online:** open **[diverge-three.vercel.app](https://diverge-three.vercel.app)**. The API runs on a free server that sleeps when idle, so the first visit can take up to a minute while it wakes up (the page says so).
+- **Locally in two minutes, no backend needed** (demo mode with built-in sample data, clearly labelled as such):
+
+  ```bash
+  git clone https://github.com/GeoJeffrey/diverge.git
+  cd diverge/frontend
+  npm ci
+  npm run dev          # open http://localhost:5173
+  ```
+
+  Demo login: `trader@example.com` / `SecurePass123!`. Requires Node.js 22 or newer.
+
+## Run it locally
+
+The full stack: the data pipeline, the API and the web app on your machine.
+
+**You need:** Python 3.10+ (3.11 recommended), Node.js 22+, Git. A GPU is optional; without one, sentiment scoring runs on the CPU.
+
+**1. Backend and pipeline**
+
+```bash
+git clone https://github.com/GeoJeffrey/diverge.git && cd diverge
+python -m venv .venv
+source .venv/bin/activate          # Windows PowerShell: .venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+pip install -e .
+
+python run_all.py                  # one pipeline run: collect posts, score them, compute indices, outlooks
+python run_server.py --port 8000   # API + interactive docs at http://localhost:8000/docs
+```
+
+The first pipeline run downloads the FinBERT sentiment model (about 440 MB). Without `DATABASE_URL` everything is stored in a local SQLite file under `data/`. Configuration options are listed in [`.env.example`](.env.example).
+
+**2. Web app against your local API**
+
+```bash
+cd frontend
+cp .env.example .env               # sets VITE_API_BASE_URL=http://localhost:8000
+npm ci
+npm run dev                        # http://localhost:5173
+```
+
+**Or with Docker:** `docker compose up --build` starts PostgreSQL, the API and the web app.
+
+## How it works
+
+```mermaid
+flowchart LR
+    A[StockTwits · Telegram · Reddit · RSS · Trends] --> B[(raw posts)]
+    B --> C[FinBERT sentiment<br/>timing features]
+    C --> D[Narrative indices<br/>Rn · CLI · VDI · CIRG · CASSI]
+    C --> E[Integrity layer<br/>MinHash-LSH · learned bot scorer]
+    C & D & E --> O[Next-day outlook<br/>P up · expected move · drivers]
+    D & E --> F[Narrative intensity<br/>+ explainability traces]
+    O & F --> P[publish] --> G[FastAPI + JWT<br/>PostgreSQL]
+    G --> H[React web app]
+```
+
+1. **Collect** public posts from StockTwits, Telegram, Reddit, financial news feeds and Google Trends (public endpoints only, respecting robots.txt and rate limits).
+2. **Score** each post with a FinBERT model fine-tuned on finance tweets, plus capitulation, sarcasm, language and timing features.
+3. **Measure the story** with five narrative indices, and **check the buzz is real** with a coordinated-campaign detector.
+4. **Make the call**: a next-day outlook per stock, explained by the inputs that pushed it.
+5. **Publish** to PostgreSQL every four hours; the API and web app read from there.
+
+| Signal | What it measures | How |
+|---|---|---|
+| **Next-day outlook** | P(next close is higher) and expected move vs normal, with the top drivers | Logistic + ridge models on daily social and price features, trained walk-forward; per-feature contributions shown in the UI |
+| **Rn**, contagion | Is the story recruiting new posters faster than it loses them? | Renewal-equation estimator (Cori et al. 2013) on first-mention onsets, with a 95% credible interval |
+| **CLI**, capitulation | Share of "I'm out, sold everything" posts | Lexicon classifier |
+| **VDI**, language divergence | English vs Hinglish sentiment gap | Pooled z-scores |
+| **CIRG**, reality check | Investor hype vs consumer reviews | Pooled z-scores |
+| **CASSI**, spillover | How much one stock's sentiment is driven by others | VAR forecast-error variance decomposition |
+| **Coordination** | Probability that the window contains a coordinated campaign | Logistic model on duplicate, timing and variance features |
+
+Every index returns a real value or `null` with a coverage note. No placeholder values are filled in.
+
+Full methodology, evaluation design and limitations: **[docs/architecture.md](docs/architecture.md)**.
 
 ## Results
 
@@ -75,106 +175,11 @@ Direction accuracy is **at chance and below the always-up baseline**: the outloo
 
 The tweet dataset ends on 2019-12-31, so the 2020 test days (2-8 January) have no social data. A first blind real-world check of the bot detector labelled 2 real 2-hour windows (2 more marked unsure and excluded). The model flagged none of them, so its real-world precision and false-alarm rate **can't be measured yet** (`n/a` in [reports/RESULTS.md](reports/RESULTS.md)). The check is repeated as the deployed worker collects more posts.
 
----
-
-## What's inside
-
-```mermaid
-flowchart LR
-    A[Reddit · StockTwits · Telegram · RSS · Trends] --> B[(raw posts)]
-    B --> C[FinBERT sentiment<br/>timing features]
-    C --> D[Narrative indices<br/>Rn · CLI · VDI · CIRG · CASSI]
-    C --> E[Integrity layer<br/>MinHash-LSH · learned bot scorer]
-    C & D & E --> O[Next-day outlook<br/>P up · expected move · drivers]
-    D & E --> F[Narrative intensity<br/>+ explainability traces]
-    O & F --> P[publish] --> G[FastAPI + JWT<br/>PostgreSQL]
-    G --> H[React web app]
-```
-
-| Signal | What it measures | How |
-|---|---|---|
-| **Next-day outlook** | P(next close is higher) and expected move vs normal, with the top drivers | Logistic + ridge models on daily social and price features, trained walk-forward; per-feature contributions shown in the UI |
-| **Rn**, contagion | Is the story recruiting new posters faster than it loses them? | Renewal-equation estimator (Cori et al. 2013) on first-mention onsets, with a 95% credible interval |
-| **CLI**, capitulation | Share of "I'm out, sold everything" posts | Lexicon classifier |
-| **VDI**, language divergence | English vs Hinglish sentiment gap | Pooled z-scores |
-| **CIRG**, reality check | Investor hype vs consumer reviews | Pooled z-scores |
-| **CASSI**, spillover | How much one stock's sentiment is driven by others | VAR forecast-error variance decomposition |
-| **Coordination** | Probability that the window contains a coordinated campaign | Logistic model on duplicate, timing and variance features |
-
-Every index returns a real value or `null` with a coverage note. No placeholder values are filled in.
-
-Full methodology, evaluation design and limitations: **[docs/architecture.md](docs/architecture.md)**.
-
-## The web app
-
-![Landing page: a live next-day outlook drawn as a fork](docs/screenshots/landing.png)
-
-The UI is built around one chart, **the fork**: today's line splits into an up and a down branch. Branch thickness is
-the chance of each direction (a 53/47 call looks almost symmetric, which is the honest picture), the spread of the fork
-is the expected move, and a dashed fork behind it shows the stock's typical move. There is no price axis, because it is
-a probability picture, not a price forecast.
-
-| | |
-|---|---|
-| ![Ticker page](docs/screenshots/ticker.png) | ![Market overview](docs/screenshots/market.png) |
-| **Ticker page**: the outlook, its drivers, coordination risk and its track record | **Market**: all tracked names by exchange, sortable and filterable |
-
-![Model accuracy page](docs/screenshots/accuracy.png)
-
-- **Honesty is part of the design.** Every call states how close it is to a coin flip, shows the API's disclaimer and
-  links to the track record. "Not enough data" is a designed, hatched state rather than a blank or a placeholder value.
-  Every number on screen comes from the API.
-- **Demo mode.** Without `VITE_API_BASE_URL` the app runs on built-in demo data and says so on every page; the accuracy
-  page then shows the committed model's real test results.
-- **Built for everyone.** WCAG 2.1 AA in both themes (checked with axe on every route), full keyboard navigation,
-  reduced-motion support, and layouts designed for phones as well as desktops.
-- **Free-tier aware.** If the sleeping Render API takes more than 4 seconds to answer, the page says it is waking up.
-
-## Tech stack
-
-Python · PyTorch · Hugging Face Transformers · scikit-learn · statsmodels · pandas · FastAPI · SQLAlchemy · Alembic · PostgreSQL · JWT/bcrypt · APScheduler · React 19 · TypeScript · Vite · Tailwind · TanStack Query · hand-built SVG charts · Vitest · Playwright · Docker · GitHub Actions · Neon · Render · Vercel
-
-## Quick start
-
-```bash
-git clone https://github.com/GeoJeffrey/diverge.git && cd diverge
-python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
-pip install -r requirements.txt && pip install -e .
-
-python run_all.py                 # scrape → features → indices → integrity → composite → outlook
-python run_server.py --port 8000  # API on http://localhost:8000/docs
-cd frontend && npm install && npm run dev               # web app on http://localhost:5173
-```
-
-Or run everything in containers: `docker compose up --build`. Without `DATABASE_URL`, the app uses a local SQLite file.
-
-## Deployment ($0)
-
-Frontend on **Vercel** → API on a **Render** free web service (slim Docker image, no PyTorch) → **Neon** Postgres ←
-pipeline worker as a **GitHub Actions** scheduled workflow every 4 hours. The free API sleeps when idle, so the
-first request can take ~30-60 s. Step-by-step setup: **[DEPLOY.md](DEPLOY.md)**.
-
 ## Reproduce the evaluation
 
-**One command (Windows):** `powershell -ExecutionPolicy Bypass -File scripts\run_everything.ps1`
-(Linux/macOS: `bash scripts/run_everything.sh`). It sets up a virtual environment with CUDA PyTorch, then runs
-preflight checks, the tests, every benchmark, the outlook training, one live pipeline run, an API load test and the
-frontend build, and writes `reports/RESULTS.md`. Then validate the bot detector on real posts with blind hand labels:
-`python -m diverge.evaluation.label_windows`.
+**One command.** Windows: `powershell -ExecutionPolicy Bypass -File scripts\run_everything.ps1`; Linux/macOS: `bash scripts/run_everything.sh`. It sets up a virtual environment with CUDA PyTorch, then runs preflight checks, the tests, every benchmark, the outlook training, one live pipeline run, an API load test and the frontend build, and writes `reports/RESULTS.md` (about 45-75 minutes on a laptop GPU; add `-Quick` / `--quick` for a CPU smoke run).
 
-To label the posts the **deployed** worker has collected, copy them from the serving database into a local snapshot
-first (read-only; set `DATABASE_URL` in your own terminal, never in a file):
-
-```powershell
-$env:DATABASE_URL = "<serving database URL>"
-python -m diverge.pull_serving                                   # -> data/serving_snapshot.db
-Remove-Item Env:DATABASE_URL
-python -m diverge.evaluation.label_windows --db data/serving_snapshot.db
-python -m diverge.evaluation.label_windows --evaluate
-python -m diverge.evaluation.run_all --render
-```
-
-Individual steps:
+**Step by step:**
 
 ```bash
 pip install -r requirements-eval.txt
@@ -194,12 +199,27 @@ python -m diverge.evaluation.run_all --render   # adds the latency table to RESU
 | Predictive backtest | `evaluation/backtest.py` | `mjw/stock_market_tweets` + Yahoo Finance; or `--source db` for your own scraped data |
 | Outlook model + track record | `evaluation/train_outlook.py` | Same data; writes `src/diverge/outlook/outlook_model.json` |
 
+**Check the bot detector on real posts (blind hand labels).** `python -m diverge.evaluation.label_windows` shows real 2-hour windows without the model's score and asks you to label each one coordinated, organic or unsure. To label the posts a **deployed** worker has collected, copy them from the serving database into a local snapshot first (read-only; set `DATABASE_URL` in your own terminal, never in a file):
+
+```powershell
+$env:DATABASE_URL = "<serving database URL>"
+python -m diverge.pull_serving                                   # -> data/serving_snapshot.db
+Remove-Item Env:DATABASE_URL
+python -m diverge.evaluation.label_windows --db data/serving_snapshot.db
+python -m diverge.evaluation.label_windows --evaluate
+python -m diverge.evaluation.run_all --render
+```
+
+## Deploy your own ($0)
+
+Web app on **Vercel** → API on a **Render** free web service (slim Docker image, no PyTorch) → **Neon** PostgreSQL ← pipeline worker as a **GitHub Actions** workflow every 4 hours. Step-by-step setup, the secrets each service needs (names only) and the free-tier limits: **[DEPLOY.md](DEPLOY.md)**.
+
 ## API
 
 | Method | Endpoint | Auth |
 |---|---|:-:|
 | `GET` | `/health` | |
-| `GET` | `/tickers`: monitored tickers with composite score and trust badge | |
+| `GET` | `/tickers`: monitored tickers with narrative intensity and coordination label | |
 | `GET` | `/ticker/{symbol}/simple`: plain-language summary card | |
 | `GET` | `/ticker/{symbol}/outlook`: next-day outlook with drivers | |
 | `GET` | `/outlook`: latest outlook for every ticker | |
@@ -209,7 +229,7 @@ python -m diverge.evaluation.run_all --render   # adds the latency table to RESU
 | `GET` | `/ticker/{symbol}`: all indices, coordination score, risk flags | ✓ |
 | `GET` | `/ticker/{symbol}/reasoning`: post-level reasoning traces | ✓ |
 
-The contract is frozen in [`docs/openapi.json`](docs/openapi.json); `scripts/diff_openapi.py` detects drift.
+Interactive docs: `/docs` on any running API ([live](https://diverge-api.onrender.com/docs)). The contract is frozen in [`docs/openapi.json`](docs/openapi.json); `scripts/diff_openapi.py` detects drift.
 
 ## Tests
 
@@ -222,8 +242,7 @@ npm test               # 38 unit tests: formatting, wording rules, charts, data 
 npm run test:e2e       # 70 Playwright tests in demo mode: every route, both themes, 375 and 1280 px, axe WCAG 2.1 AA, layout shift
 ```
 
-CI runs a secret scan, the backend tests, an offline benchmark smoke test, and the frontend lint, typecheck, unit tests
-and build on every push.
+CI runs a secret scan, the backend tests, an offline benchmark smoke test, and the frontend lint, typecheck, unit tests and build on every push.
 
 ## Project layout
 
@@ -236,18 +255,33 @@ src/diverge/
   outlook/         shared daily features, next-day outlook model + live phase
   aggregation/     narrative intensity score
   explainability/  reasoning traces, narrative phylogeny
-  evaluation/      benchmarks, backtest, outlook training, report generator
+  evaluation/      benchmarks, backtest, outlook training, labelling tool, report generator
   pipeline.py      one end-to-end pipeline for the CLI and the scheduled worker
   publish.py       pushes results from the worker's store to the API's database
+  pull_serving.py  copies the serving database's posts into a local snapshot for labelling
   api/ db/ auth/   FastAPI app, SQLAlchemy models, JWT
 frontend/          React + Vite web app
   src/design-system/  tokens, type, components, the fork and other SVG charts
   src/features/       landing, market, ticker (simple/advanced/why/integrity), accuracy, method, auth
   src/lib/            API client, queries, formatting, theme
-  e2e/                Playwright smoke + accessibility tests
+  e2e/                Playwright smoke, accessibility and layout-shift tests
 reports/           generated results (RESULTS.md + JSON)
+docs/              architecture, API contract, screenshots
 ```
+
+## Limitations
+
+- Next-day direction for large, liquid stocks is close to a coin flip; Diverge does not claim tradeable alpha.
+- The bot detector was trained on simulated campaigns; real-world precision is still being measured with blind hand labels.
+- The outlook model was trained on five US large caps and is applied to Indian and US stocks, so live accuracy can differ from the recorded track record.
+- Reddit currently refuses unauthenticated requests, so live posts come mainly from StockTwits, Telegram, news feeds and Google Trends.
+
+More in [docs/architecture.md](docs/architecture.md#known-limitations).
+
+## Contributing
+
+Issues and pull requests are welcome. Please branch from `master`, keep changes focused, and make sure `pytest` and the frontend checks (`npm run lint`, `npm run typecheck`, `npm test`) pass; CI runs them on every pull request.
 
 ## License
 
-MIT
+[MIT](LICENSE). Diverge is a research project: outlooks are statistical estimates, not investment advice.
