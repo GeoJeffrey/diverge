@@ -219,7 +219,7 @@ pytest -q     # 110 tests: index maths, Rn recovery, LSH vs brute force, backtes
 cd frontend
 npm run lint && npm run typecheck
 npm test               # 38 unit tests: formatting, wording rules, charts, data states, API contract vs docs/openapi.json
-npm run test:e2e       # 54 Playwright tests in demo mode: every route, both themes, 375 and 1280 px, axe WCAG 2.1 AA
+npm run test:e2e       # 70 Playwright tests in demo mode: every route, both themes, 375 and 1280 px, axe WCAG 2.1 AA, layout shift
 ```
 
 CI runs a secret scan, the backend tests, an offline benchmark smoke test, and the frontend lint, typecheck, unit tests

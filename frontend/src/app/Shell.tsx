@@ -129,7 +129,8 @@ export function Shell() {
       <DemoBand />
       <OfflineBanner />
       <WakingBanner />
-      <main id="main" tabIndex={-1} className="outline-none">
+      {/* min-h keeps the footer below the fold while a page loads, so it never jumps (CLS) */}
+      <main id="main" tabIndex={-1} className="min-h-screen outline-none">
         <Outlet />
       </main>
       <footer className="mt-24 border-t border-line">

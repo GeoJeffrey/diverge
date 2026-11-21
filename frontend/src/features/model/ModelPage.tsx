@@ -24,10 +24,14 @@ export default function ModelPage() {
   const q = useOutlookModel();
 
   if (q.isPending) {
+    // The headline is static, so it shows at once; only the data-driven intro waits.
+    // Keep in step with the "/model" fragment in prerender-shell.ts.
     return (
-      <div className="page pt-12" aria-busy="true">
-        <Skeleton className="h-12 w-2/3" label="Loading the track record" />
-        <Skeleton className="mt-10 h-[420px]" />
+      <div className="page">
+        <header className="max-w-[880px] pb-10 pt-12">
+          <h1 className="t-display">Checked against days it had never seen.</h1>
+          <Skeleton className="mt-6 h-16 max-w-[62ch]" label="Loading the track record" />
+        </header>
       </div>
     );
   }

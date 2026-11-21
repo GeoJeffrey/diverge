@@ -8,6 +8,19 @@
 @import "@fontsource-variable/inter/opsz.css";
 @import "@fontsource-variable/jetbrains-mono/index.css";
 
+/*
+ * Metric-matched fallback: Arial resized to Inter's proportions, so text painted before Inter
+ * arrives takes the same space and nothing re-wraps or shifts when the web font swaps in.
+ */
+@font-face {
+  font-family: "Inter Fallback";
+  src: local("Arial");
+  ascent-override: 90.49%;
+  descent-override: 22.56%;
+  line-gap-override: 0%;
+  size-adjust: 107.06%;
+}
+
 :root,
 :root[data-theme="ink"] {
   color-scheme: dark;
@@ -73,7 +86,7 @@
 
 :root {
   /* type */
-  --font-sans: "Inter Variable", "Inter", system-ui, sans-serif;
+  --font-sans: "Inter Variable", "Inter Fallback", "Inter", system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace;
   /* scale: minor third from a 15px body, display steps for the hero */
   --fs-xs: 0.75rem;   /* 12 */
