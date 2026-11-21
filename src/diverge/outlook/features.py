@@ -8,6 +8,8 @@ This is the single implementation used by BOTH the research backtest / model tra
 on exactly the features it was trained on.
 """
 
+import os
+from contextlib import contextmanager
 from typing import List
 
 import numpy as np
@@ -50,10 +52,28 @@ def _duplicate_share_lists(texts: List[str], authors: List[str]) -> float:
     return len(flagged) / len(texts)
 
 
+_BLAS_THREAD_VARS = ("OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "OMP_NUM_THREADS")
+
+
+@contextmanager
+def _single_threaded_blas_env():
+    """Spawned workers inherit os.environ at start-up. Each worker runs one single-threaded task,
+    but numpy/scipy's BLAS would otherwise reserve buffers for every CPU thread in every worker
+    (~750 MB commit each on Windows), exhausting the page file on 16 GB machines."""
+    saved = {k: os.environ.get(k) for k in _BLAS_THREAD_VARS}
+    os.environ.update({k: "1" for k in _BLAS_THREAD_VARS})
+    try:
+        yield
+    finally:
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+
 def _parallel_duplicate_share(posts: pd.DataFrame, max_posts: int = 3000) -> pd.Series:
     """duplicate share per (ticker, day), using every CPU core for large panels."""
-    import os
-
     keys, jobs = [], []
     for key, grp in posts.groupby(["ticker", "day"]):
         keys.append(key)
@@ -64,7 +84,7 @@ def _parallel_duplicate_share(posts: pd.DataFrame, max_posts: int = 3000) -> pd.
     else:
         from concurrent.futures import ProcessPoolExecutor
 
-        with ProcessPoolExecutor(max_workers=workers) as pool:
+        with _single_threaded_blas_env(), ProcessPoolExecutor(max_workers=workers) as pool:
             values = list(pool.map(_duplicate_share_lists, *zip(*jobs), chunksize=16))
     index = pd.MultiIndex.from_tuples(keys, names=["ticker", "day"])
     return pd.Series(values, index=index, dtype=float)

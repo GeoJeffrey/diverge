@@ -86,6 +86,19 @@ class TestOutlook(unittest.TestCase):
         self.assertEqual(market_of("INFY"), "IN")
         self.assertEqual(market_of("NVDA"), "US")
 
+    def test_pool_workers_start_with_single_threaded_blas(self):
+        # Regression: 15 workers each reserving 16-thread BLAS buffers exhausted the Windows page file.
+        import os
+        from concurrent.futures import ProcessPoolExecutor
+
+        from diverge.outlook.features import _single_threaded_blas_env
+
+        before = os.environ.get("OPENBLAS_NUM_THREADS")
+        with _single_threaded_blas_env(), ProcessPoolExecutor(max_workers=1) as pool:
+            seen = pool.submit(os.getenv, "OPENBLAS_NUM_THREADS").result()
+        self.assertEqual(seen, "1")
+        self.assertEqual(os.environ.get("OPENBLAS_NUM_THREADS"), before)
+
 
 if __name__ == "__main__":
     unittest.main()
