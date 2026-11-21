@@ -2,7 +2,7 @@ import { useParams } from "react-router";
 import type { ReasoningTraceItem } from "@/types/api";
 import { useReasoning, errorMessage } from "@/lib/queries";
 import { ErrorBlock, Skeleton, Unavailable } from "@/design-system/components/States";
-import { dateTime } from "@/lib/format";
+import { postsSince } from "@/lib/format";
 import { explainReasoningCategory, labelForPlatform, labelForReasoningCategory } from "@/lib/labels";
 import { tickerMeta } from "@/lib/markets";
 import NotFoundPage from "@/features/system/NotFoundPage";
@@ -58,7 +58,7 @@ export default function WhyPage() {
         {q.data && (
           <>
             <p className="t-small mt-4">
-              {q.data.total_traces.toLocaleString("en-US")} posts{q.data.window_start_utc ? `, window starting ${dateTime(q.data.window_start_utc)}` : ""}.
+              {q.data.total_traces.toLocaleString("en-US")} posts{q.data.window_start_utc ? `. ${postsSince(q.data.window_start_utc)}` : ""}.
             </p>
             {cats.length === 0 ? (
               <Unavailable title="No posts recorded for this window" className="mt-10">Readings with too few posts don't keep a reasoning trail.</Unavailable>

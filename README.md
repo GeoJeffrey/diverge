@@ -202,11 +202,11 @@ The contract is frozen in [`docs/openapi.json`](docs/openapi.json); `scripts/dif
 ## Tests
 
 ```bash
-pytest -q     # 99 tests: index maths, Rn recovery, LSH vs brute force, backtest leakage checks, outlook train/serve parity, API
+pytest -q     # 104 tests: index maths, Rn recovery, LSH vs brute force, backtest leakage checks, outlook train/serve parity, API
 
 cd frontend
 npm run lint && npm run typecheck
-npm test               # 37 unit tests: formatting, wording rules, charts, data states, API contract vs docs/openapi.json
+npm test               # 38 unit tests: formatting, wording rules, charts, data states, API contract vs docs/openapi.json
 npm run test:e2e       # 54 Playwright tests in demo mode: every route, both themes, 375 and 1280 px, axe WCAG 2.1 AA
 ```
 

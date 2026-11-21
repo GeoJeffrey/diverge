@@ -19,8 +19,8 @@ import type {
 import { MODEL_SNAPSHOT } from "./modelSnapshot";
 import { TICKERS } from "@/lib/markets";
 
-const WINDOW = "2026-11-20T08:00:00Z";
-const WINDOW_END = "2026-11-20T10:00:00Z";
+const WINDOW = "2026-08-22T12:00:00Z"; // live readings look back over the 90-day retention period
+const WINDOW_END = "2026-11-20T12:00:00Z";
 const AS_OF = "2026-11-20";
 
 export const DEMO_DISCLAIMER =
@@ -272,8 +272,8 @@ export const advancedBySymbol: Record<string, TickerAdvancedResponse> = Object.f
       },
       phylogeny_context: has
         ? [
-            { window_start_utc: "2026-11-19T08:00:00Z", mutation_type: "stable", mutation_detail: {}, composite_delta: 1.4 },
-            { window_start_utc: "2026-11-19T14:00:00Z", mutation_type: "dominant_index_shift", mutation_detail: { from: "cassi", to: "rn" }, composite_delta: 6.2 },
+            { window_start_utc: "2026-08-21T08:00:00Z", mutation_type: "stable", mutation_detail: {}, composite_delta: 1.4 },
+            { window_start_utc: "2026-08-21T16:00:00Z", mutation_type: "dominant_index_shift", mutation_detail: { from: "cassi", to: "rn" }, composite_delta: 6.2 },
             ...(r.flag === "low_trust"
               ? [{ window_start_utc: WINDOW, mutation_type: "new_risk_flag" as const, mutation_detail: { flag: "coordination_spike" }, composite_delta: -4.8 }]
               : []),

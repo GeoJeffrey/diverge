@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayLabel, leanWords, move, pct, ratio, riskFromFlag, riskFromTrustLabel } from "./format";
+import { dateOnly, dayLabel, leanWords, move, pct, postsSince, ratio, riskFromFlag, riskFromTrustLabel } from "./format";
 
 describe("format", () => {
   it("formats percentages and moves, with a dash for missing values", () => {
@@ -27,6 +27,13 @@ describe("format", () => {
     expect(riskFromFlag("high_trust")).toBe("low");
     expect(riskFromFlag("low_trust")).toBe("high");
     expect(riskFromFlag("insufficient_data")).toBe("unknown");
+  });
+
+  it("describes a reading by the posts it covers, not as an old window", () => {
+    expect(postsSince("2026-08-23T19:25:17Z")).toBe("Based on posts since 23 Aug 2026");
+    expect(postsSince("2026-08-22T12:00:00Z", "2026-11-20T12:00:00Z")).toBe("Based on posts from 22 Aug 2026 to 20 Nov 2026");
+    expect(postsSince(null)).toBe("");
+    expect(dateOnly("2026-08-23T23:59:00Z")).toBe("23 Aug 2026");
   });
 
   it("labels trading days without shifting time zones", () => {

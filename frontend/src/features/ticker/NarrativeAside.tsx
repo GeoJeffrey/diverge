@@ -1,5 +1,5 @@
 import { useTickerSimple } from "@/lib/queries";
-import { dateTime, riskFromTrustLabel } from "@/lib/format";
+import { postsSince, riskFromTrustLabel } from "@/lib/format";
 import { RiskMeter } from "@/design-system/components/Risk";
 import { Skeleton } from "@/design-system/components/States";
 import { Term } from "@/design-system/components/Term";
@@ -38,7 +38,7 @@ export function NarrativeAside({ symbol }: { symbol: string }) {
         <p className="t-small mb-1.5">Coordination risk</p>
         <RiskMeter level={hasScore ? riskFromTrustLabel(t.trust_label) : "unknown"} />
       </div>
-      <p className="t-small">Window starting {dateTime(t.window_start_utc)}</p>
+      <p className="t-small">{postsSince(t.window_start_utc)}</p>
       <p className="text-sm">
         <TextLink to={`/ticker/${symbol}/why`}>See the posts behind this reading</TextLink>
       </p>
