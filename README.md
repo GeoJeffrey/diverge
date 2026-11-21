@@ -78,6 +78,14 @@ Or run everything in containers: `docker compose up --build`. Without `DATABASE_
 
 ## Reproduce the evaluation
 
+**One command (Windows):** `powershell -ExecutionPolicy Bypass -File scripts\run_everything.ps1`
+(Linux/macOS: `bash scripts/run_everything.sh`). It sets up a virtual environment with CUDA PyTorch, then runs
+preflight checks, the tests, every benchmark, the outlook training, one live pipeline run, an API load test and the
+frontend build, and writes `reports/RESULTS.md`. Then validate the bot detector on real posts with blind hand labels:
+`python -m diverge.evaluation.label_windows`.
+
+Individual steps:
+
 ```bash
 pip install -r requirements-eval.txt
 python -m diverge.evaluation.run_all            # full run, ~1 h on a laptop GPU
@@ -116,7 +124,7 @@ The contract is frozen in [`docs/openapi.json`](docs/openapi.json); `scripts/dif
 ## Tests
 
 ```bash
-pytest -q     # 85 tests: index maths, Rn recovery, LSH vs brute force, backtest leakage checks, outlook train/serve parity, API
+pytest -q     # 86 tests: index maths, Rn recovery, LSH vs brute force, backtest leakage checks, outlook train/serve parity, API
 ```
 
 CI runs a secret scan, the test suite, an offline benchmark smoke test and the frontend build on every push.

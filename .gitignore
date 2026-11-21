@@ -34,3 +34,6 @@ data/
 models/
 # Evaluation caches
 .cache/
+
+# Local run logs from scripts/run_everything.py
+reports/run_logs/

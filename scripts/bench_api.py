@@ -12,6 +12,7 @@ Endpoints exercised: /health, /tickers, /ticker/{symbol}/simple (public) and
 
 import argparse
 import json
+import secrets
 import statistics
 import sys
 import time
@@ -47,17 +48,30 @@ def _pct(values, q):
 
 def main(base, n, concurrency, symbol):
     email = f"bench-{uuid.uuid4().hex[:8]}@example.com"
-    status, _, body = _request(f"{base}/auth/signup", data={"email": email, "password": "Bench-pass-123", "full_name": "Bench"})
+    status, _, body = _request(f"{base}/auth/signup", data={"email": email, "password": secrets.token_urlsafe(16), "full_name": "Bench"})
     if status not in (200, 201):
         sys.exit(f"signup failed with HTTP {status}; is the API running at {base}?")
     token = json.loads(body)["access_token"]
 
+    if not symbol:  # pick a ticker that actually has data, so 404s don't pollute the latency numbers
+        _, _, body = _request(f"{base}/tickers")
+        listed = json.loads(body or b"{}").get("tickers", []) if body else []
+        symbol = listed[0]["symbol"] if listed else None
+
     endpoints = {
         "GET /health": (f"{base}/health", None),
         "GET /tickers": (f"{base}/tickers", None),
-        f"GET /ticker/{symbol}/simple": (f"{base}/ticker/{symbol}/simple", None),
-        f"GET /ticker/{symbol} (auth)": (f"{base}/ticker/{symbol}", token),
+        "GET /outlook": (f"{base}/outlook", None),
+        "GET /outlook/model": (f"{base}/outlook/model", None),
     }
+    if symbol:
+        endpoints.update({
+            f"GET /ticker/{symbol}/simple": (f"{base}/ticker/{symbol}/simple", None),
+            f"GET /ticker/{symbol}/outlook": (f"{base}/ticker/{symbol}/outlook", None),
+            f"GET /ticker/{symbol} (auth)": (f"{base}/ticker/{symbol}", token),
+        })
+    else:
+        print("No ticker has data yet; benchmarking list/health/outlook endpoints only.")
     results = {"base_url": base, "requests_per_endpoint": n, "concurrency": concurrency, "endpoints": {}}
     for name, (url, tok) in endpoints.items():
         for _ in range(20):  # warm-up
@@ -82,6 +96,6 @@ if __name__ == "__main__":
     ap.add_argument("--base-url", default="http://localhost:8000")
     ap.add_argument("--requests", type=int, default=2000)
     ap.add_argument("--concurrency", type=int, default=32)
-    ap.add_argument("--symbol", default="AAPL")
+    ap.add_argument("--symbol", default=None, help="defaults to the first ticker that has data")
     a = ap.parse_args()
     main(a.base_url.rstrip("/"), a.requests, a.concurrency, a.symbol)

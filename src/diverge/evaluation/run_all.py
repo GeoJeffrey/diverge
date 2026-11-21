@@ -205,6 +205,24 @@ def render() -> Path:
                 f"{100 * big['base_rate']:.0f}% base rate ({big.get('lift') or round(big['precision'] / big['base_rate'], 2)}x lift) "
                 f"over {t['test_days']:,} out-of-sample ticker-days.")
 
+    real = _load("real_world_validation.json")
+    if real:
+        rs = real["random_sample"]
+        lines += ["## Real-world check of the bot detector (blind hand labels)", "",
+                  f"{real['labelled_windows']} real 2-hour windows from the live scrapers, labelled without seeing the model's score "
+                  f"(half highest-scored, half random; {real['unsure_excluded']} marked unsure and excluded).", "",
+                  _row(["Metric", "Value"]), _row(["---"] * 2),
+                  _row(["Precision when flagged", f"{100 * (real['precision_when_flagged'] or 0):.0f}% of {real['flagged_windows']} flagged windows"]),
+                  _row(["ROC-AUC on labelled windows", real.get("roc_auc", "n/a (one class only)")]),
+                  _row(["False-alarm rate (random windows)", f"{100 * (rs['false_alarm_rate'] or 0):.0f}%"]),
+                  _row(["Coordinated share of random windows", f"{100 * (rs['coordinated_prevalence'] or 0):.0f}%"]), ""]
+        if real["flagged_windows"] >= 10 and (real["precision_when_flagged"] or 0) >= 0.7:
+            bullets.append(f"Validated the bot detector on {real['labelled_windows']} blind hand-labelled real-world windows: "
+                           f"{100 * real['precision_when_flagged']:.0f}% precision on flagged windows"
+                           + (f", ROC-AUC {real['roc_auc']:.2f}." if "roc_auc" in real else "."))
+        else:
+            weak.append("Real-world bot check: too few flagged windows or precision below 70%; report it, don't headline it.")
+
     api = _load("api_latency.json")
     if api:
         lines += ["## 5. API performance", "",
