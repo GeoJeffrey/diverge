@@ -162,6 +162,18 @@ preflight checks, the tests, every benchmark, the outlook training, one live pip
 frontend build, and writes `reports/RESULTS.md`. Then validate the bot detector on real posts with blind hand labels:
 `python -m diverge.evaluation.label_windows`.
 
+To label the posts the **deployed** worker has collected, copy them from the serving database into a local snapshot
+first (read-only; set `DATABASE_URL` in your own terminal, never in a file):
+
+```powershell
+$env:DATABASE_URL = "<serving database URL>"
+python -m diverge.pull_serving                                   # -> data/serving_snapshot.db
+Remove-Item Env:DATABASE_URL
+python -m diverge.evaluation.label_windows --db data/serving_snapshot.db
+python -m diverge.evaluation.label_windows --evaluate
+python -m diverge.evaluation.run_all --render
+```
+
 Individual steps:
 
 ```bash
@@ -202,7 +214,7 @@ The contract is frozen in [`docs/openapi.json`](docs/openapi.json); `scripts/dif
 ## Tests
 
 ```bash
-pytest -q     # 104 tests: index maths, Rn recovery, LSH vs brute force, backtest leakage checks, outlook train/serve parity, API
+pytest -q     # 108 tests: index maths, Rn recovery, LSH vs brute force, backtest leakage checks, outlook train/serve parity, API
 
 cd frontend
 npm run lint && npm run typecheck
