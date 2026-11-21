@@ -129,6 +129,10 @@ def build_daily_features(
         d["divergence"] = d["sentiment_z"] - roll(ret)
 
         d["y_ret_next"] = ret.shift(-1)
+        # mean |return| over the next 5 trading days (week-ahead volatility)
+        d["y_vol5_next"] = sum(ret.abs().shift(-k) for k in range(1, 6)) / 5
+        # "big move": next-day |return| more than twice the trailing 1-month average
+        d["y_big_next"] = (ret.shift(-1).abs() > 2 * d["abs_ret_22"]).astype(float).where(ret.shift(-1).notna())
         d["y_abs_next"] = ret.shift(-1).abs()
         d["y_excess_next"] = (ret - mkt).shift(-1)
         d["ticker"] = ticker

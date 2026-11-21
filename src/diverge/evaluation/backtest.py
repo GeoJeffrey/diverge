@@ -156,9 +156,11 @@ def _model(kind: str, task: str):
 
     if task == "reg":
         return make_pipeline(StandardScaler(), RidgeCV(alphas=np.logspace(-3, 3, 13))) if kind == "linear" \
-            else HistGradientBoostingRegressor(max_iter=300, learning_rate=0.03, max_depth=3, random_state=0)
+            else HistGradientBoostingRegressor(max_iter=150, learning_rate=0.03, max_depth=3, min_samples_leaf=200,
+                                               l2_regularization=1.0, random_state=0)
     return make_pipeline(StandardScaler(), LogisticRegression(C=0.1, max_iter=2000)) if kind == "linear" \
-        else HistGradientBoostingClassifier(max_iter=200, learning_rate=0.03, max_depth=3, random_state=0)
+        else HistGradientBoostingClassifier(max_iter=150, learning_rate=0.03, max_depth=3, min_samples_leaf=200,
+                                            l2_regularization=1.0, random_state=0)
 
 
 def walk_forward(df: pd.DataFrame, features: List[str], target: str, task: str, kind: str,
@@ -176,13 +178,14 @@ def walk_forward(df: pd.DataFrame, features: List[str], target: str, task: str, 
     return pd.concat(preds)
 
 
-def evaluate_volatility(df: pd.DataFrame, narrative: List[str]) -> Dict:
+def evaluate_volatility(df: pd.DataFrame, narrative: List[str], target: str = "y_abs_next") -> Dict:
     from scipy.stats import spearmanr
 
+    df = df.dropna(subset=[target])
     res = {}
     for kind in ["linear", "gbm"]:
-        base = walk_forward(df, PRICE_FEATURES, "y_abs_next", "reg", kind)
-        full = walk_forward(df, PRICE_FEATURES + narrative, "y_abs_next", "reg", kind)
+        base = walk_forward(df, PRICE_FEATURES, target, "reg", kind)
+        full = walk_forward(df, PRICE_FEATURES + narrative, target, "reg", kind)
         y, eb, ef = base["y"].to_numpy(), (base["y"] - base["pred"]).to_numpy(), (full["y"] - full["pred"]).to_numpy()
         sst = ((y - y.mean()) ** 2).sum()
         dm, p = diebold_mariano(eb, ef)
@@ -218,6 +221,44 @@ def evaluate_direction(df: pd.DataFrame, narrative: List[str], cost_bps: float =
                 "long_short_sharpe_after_costs": round(float(daily_pnl.mean() / daily_pnl.std() * np.sqrt(252)), 3),
             }
         res[kind] = row
+    return res
+
+
+def big_move_alerts(df: pd.DataFrame, narrative: List[str], top_share: float = 0.10) -> Dict:
+    """
+    Can we flag the days before a big move (next-day |return| > 2x its 1-month average)?
+    Each test year, the top `top_share` of ticker-days by predicted probability are "alerts".
+    Lift = how many times more often a big move follows an alert than an average day.
+    """
+    from sklearn.metrics import average_precision_score, roc_auc_score
+
+    df = df.dropna(subset=["y_big_next"])
+    res: Dict = {"definition": "next-day |return| > 2x trailing 22-day mean |return|", "alert_share": top_share}
+    for name, feats in [("price_only", PRICE_FEATURES), ("with_narrative", PRICE_FEATURES + narrative)]:
+        out = walk_forward(df, feats, "y_big_next", "clf", "gbm")
+        y = out["y"].to_numpy().astype(int)
+        cut = out.groupby(out["day"].dt.year)["pred"].transform(lambda s: s.quantile(1 - top_share))
+        alert = (out["pred"] >= cut).to_numpy()
+        base = float(y.mean())
+        prec = float(y[alert].mean()) if alert.any() else 0.0
+        res[name] = {
+            "roc_auc": round(float(roc_auc_score(y, out["pred"])), 4),
+            "pr_auc": round(float(average_precision_score(y, out["pred"])), 4),
+            "base_rate": round(base, 4),
+            "alert_precision": round(prec, 4),
+            "lift": round(prec / base, 2) if base > 0 else None,
+            "recall_of_big_moves": round(float(alert[y == 1].mean()), 4) if y.any() else None,
+            "test_observations": int(len(y)),
+        }
+    # Rule-of-thumb version with no model: top-decile attention spikes
+    thr = df.groupby("ticker")["volume_z"].transform(lambda s: s.quantile(1 - top_share))
+    spike = df["volume_z"] >= thr
+    base = float(df["y_big_next"].mean())
+    res["attention_spike_rule"] = {
+        "alert_precision": round(float(df.loc[spike, "y_big_next"].mean()), 4),
+        "base_rate": round(base, 4),
+        "lift": round(float(df.loc[spike, "y_big_next"].mean()) / base, 2) if base > 0 else None,
+    }
     return res
 
 
@@ -261,6 +302,8 @@ def run_backtest(posts: pd.DataFrame, prices: pd.DataFrame, with_duplicates: boo
                   "posts": int(len(posts))},
         "narrative_features": narrative,
         "volatility": evaluate_volatility(df, narrative),
+        "volatility_5d": evaluate_volatility(df, narrative, target="y_vol5_next"),
+        "big_move_alerts": big_move_alerts(df, narrative),
         "direction": evaluate_direction(df, narrative),
         "attention_shock_event_study": event_study(df),
         "permutation_importance_pct_mse": feature_importance(df, narrative),

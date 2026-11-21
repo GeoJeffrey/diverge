@@ -67,3 +67,23 @@ class TestBacktest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestClaimGuard(unittest.TestCase):
+    def test_noise_never_produces_a_claimable_volatility_gain(self):
+        from diverge.evaluation.run_all import credible_gain
+        from diverge.outlook.features import build_daily_features
+
+        for seed in (5, 6, 7):
+            posts, prices = synthetic_panel(planted=False, seed=seed)
+            df = build_daily_features(posts, prices, with_duplicates=False)
+            narrative = [f for f in backtest.NARRATIVE_FEATURES if df[f].std() > 0]
+            for target in ("y_abs_next", "y_vol5_next"):
+                for m in backtest.evaluate_volatility(df, narrative, target).values():
+                    self.assertFalse(credible_gain(m), (seed, target, m))
+
+    def test_planted_signal_gives_big_move_lift(self):
+        posts, prices = synthetic_panel(planted=True, seed=5)
+        res = backtest.run_backtest(posts, prices, with_duplicates=False)["big_move_alerts"]
+        self.assertGreater(res["with_narrative"]["lift"], res["price_only"]["lift"])
+        self.assertGreater(res["with_narrative"]["lift"], 2.0)

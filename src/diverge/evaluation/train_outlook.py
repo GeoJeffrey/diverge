@@ -133,6 +133,8 @@ def track_record(wf: pd.DataFrame) -> Dict[str, Any]:
                 "share_of_days": round(float(np.nanmean(large)), 4),
                 "precision": round(float(actually_large[large].mean()), 4) if large.any() else None,
                 "base_rate": round(float(actually_large.mean()), 4),
+                "lift": round(float(actually_large[large].mean() / actually_large.mean()), 2)
+                if large.any() and actually_large.mean() > 0 else None,
             },
         },
     }
