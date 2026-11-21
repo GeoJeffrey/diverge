@@ -1,0 +1,22 @@
+# Slim dependencies for the API image (Dockerfile.api). The API only reads the serving database:
+# no PyTorch, transformers, scrapers or pandas. Versions are the ones the test suite passed with;
+# they satisfy the ranges in requirements.txt (keep the two files in step).
+
+# API & web server
+fastapi==0.165.0
+uvicorn[standard]==0.54.0
+
+# Database & migrations
+sqlalchemy==2.1.9
+psycopg2-binary==2.9.13
+alembic==1.20.1
+
+# Authentication & security
+python-jose[cryptography]==3.5.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+python-multipart==0.0.34
+
+# Validation
+pydantic[email]==2.14.4
+email-validator==2.4.0

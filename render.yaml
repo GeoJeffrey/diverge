@@ -1,0 +1,20 @@
+# Render Blueprint: the Diverge API on Render's free plan (slim image, no ML stack).
+# Render prompts for the `sync: false` values only when the Blueprint is first created;
+# change them later under the service's Environment tab. See DEPLOY.md.
+services:
+  - type: web
+    name: diverge-api
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: master
+    dockerfilePath: ./Dockerfile.api
+    healthCheckPath: /health
+    autoDeployTrigger: checksPass  # deploy a master commit only after its CI checks pass
+    envVars:
+      - key: DATABASE_URL          # Neon connection string (ends with ?sslmode=require)
+        sync: false
+      - key: ALLOWED_ORIGINS       # the Vercel site URL, e.g. https://<project>.vercel.app
+        sync: false
+      - key: DIVERGE_SECRET_KEY    # JWT signing key
+        generateValue: true
