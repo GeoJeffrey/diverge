@@ -1,3 +1,8 @@
+/**
+ * Demo-mode fixtures (VITE_API_BASE_URL unset or "mock"). Shapes follow docs/openapi.json.
+ * The UI marks everything served from here as demo data. The model track record is the real
+ * committed model (see modelSnapshot.ts); every per-ticker value below is illustrative only.
+ */
 import type {
   AuthTokenResponse,
   CoordinationMetric,
@@ -11,38 +16,15 @@ import type {
   TickerSimpleItem,
   UserProfileResponse,
 } from "@/types/api";
+import { MODEL_SNAPSHOT } from "./modelSnapshot";
+import { TICKERS } from "@/lib/markets";
 
-const WINDOW = "2026-06-11T19:40:24.121335Z";
-const WINDOW_END = "2026-09-10T01:14:12.000000Z";
+const WINDOW = "2026-11-20T08:00:00Z";
+const WINDOW_END = "2026-11-20T10:00:00Z";
+const AS_OF = "2026-11-20";
 
-function metric(
-  label: string,
-  score: number | null,
-  available: boolean,
-  coverage_note: string | null,
-): IndexMetricValue {
-  return { label, score, available, coverage_note };
-}
-
-function indices(partial: Partial<IndicesBreakdown>): IndicesBreakdown {
-  return {
-    rn: partial.rn ?? metric("Contagion Core", 1.34, true, null),
-    cirg: partial.cirg ?? metric("Reality Check", 0.62, true, null),
-    cli: partial.cli ?? metric("Capitulation Signal", 0.29, true, null),
-    cassi: partial.cassi ?? metric("Cross-Market Spillover", 0.71, true, null),
-    vdi: partial.vdi ?? metric("Language Divergence", 0.44, true, null),
-  };
-}
-
-function trust(score: number, flag: CoordinationMetric["confidence_flag"]): CoordinationMetric {
-  return {
-    label: "Coordination risk",
-    coordination_score: score,
-    confidence_flag: flag,
-    available: true,
-    coverage_note: null,
-  };
-}
+export const DEMO_DISCLAIMER =
+  "Demo data: illustrative values, not a live reading. In live mode this is a statistical estimate from public social-media data and prices, with its historical accuracy shown alongside. Not investment advice.";
 
 export const mockUsers: Array<UserProfileResponse & { password: string }> = [
   {
@@ -59,592 +41,292 @@ export const health: HealthResponse = {
   status: "healthy",
   version: "1.0.0",
   database: "connected",
-  timestamp_utc: "2026-09-10T01:30:00.000Z",
+  timestamp_utc: "2026-11-20T12:00:00.000Z",
 };
 
-export const tickerList: TickerSimpleItem[] = [
-  {
-    id: "INFY",
-    symbol: "INFY",
-    name: "Infosys Ltd.",
-    sector: "Information Technology",
-    score: 54.6,
-    verdict_label: "mixed",
-    why_sentence:
-      "Narrative momentum is building around digital pipeline commentary, while consumer reviews still lag investor optimism.",
-    trust_label: "High confidence",
-    window_start_utc: WINDOW,
-  },
-  {
-    id: "TCS",
-    symbol: "TCS",
-    name: "Tata Consultancy Services",
-    sector: "Information Technology",
-    score: 61.2,
-    verdict_label: "mixed",
-    why_sentence:
-      "Deal-win chatter is lifting the composite, with language between regional forums and English coverage starting to line up.",
-    trust_label: "High confidence",
-    window_start_utc: WINDOW,
-  },
-  {
-    id: "RELIANCE",
-    symbol: "RELIANCE",
-    name: "Reliance Industries Ltd.",
-    sector: "Conglomerate",
-    score: 74.0,
-    verdict_label: "building",
-    why_sentence:
-      "Cross-business narrative is strengthening: retail and energy commentary are reinforcing each other rather than competing.",
-    trust_label: "High confidence",
-    window_start_utc: WINDOW,
-  },
-  {
-    id: "TATASTEEL",
-    symbol: "TATASTEEL",
-    name: "Tata Steel Ltd.",
-    sector: "Basic Materials",
-    score: 67.0,
-    verdict_label: "building",
-    why_sentence:
-      "Infrastructure demand talk is spreading quickly, and reality-check signals from operations commentary are not contradicting it.",
-    trust_label: "High confidence",
-    window_start_utc: WINDOW,
-  },
-  {
-    id: "HDFCBANK",
-    symbol: "HDFCBANK",
-    name: "HDFC Bank Ltd.",
-    sector: "Financial Services",
-    score: 38.4,
-    verdict_label: "fading",
-    why_sentence:
-      "Deposit-growth worry is crowding out earlier optimism; trust in the conversation is lower because similar posts keep repeating.",
-    trust_label: "Low confidence — possible manipulation detected",
-    window_start_utc: WINDOW,
-  },
-  {
-    id: "WIPRO",
-    symbol: "WIPRO",
-    name: "Wipro Ltd.",
-    sector: "Information Technology",
-    score: 55.1,
-    verdict_label: "mixed",
-    why_sentence:
-      "The tape is split: some threads point to a pipeline recovery, others stay cautious on margins.",
-    trust_label: "Moderate confidence — treat with caution",
-    window_start_utc: WINDOW,
-  },
-  {
-    id: "ONGC",
-    symbol: "ONGC",
-    name: "Oil and Natural Gas Corporation",
-    sector: "Energy",
-    score: 71.3,
-    verdict_label: "building",
-    why_sentence:
-      "Energy-price narratives are consistent across platforms, with little sign of coordinated copy-paste activity.",
-    trust_label: "High confidence",
-    window_start_utc: WINDOW,
-  },
-  {
-    id: "BAJFINANCE",
-    symbol: "BAJFINANCE",
-    name: "Bajaj Finance Ltd.",
-    sector: "Financial Services",
-    score: 48.2,
-    verdict_label: "mixed",
-    why_sentence:
-      "Retail credit commentary is mixed: growth stories sit next to asset-quality caution.",
-    trust_label: "Moderate confidence — treat with caution",
-    window_start_utc: WINDOW,
-  },
-  {
-    id: "HINDUNILVR",
-    symbol: "HINDUNILVR",
-    name: "Hindustan Unilever Ltd.",
-    sector: "Consumer Goods",
-    score: 59.8,
-    verdict_label: "mixed",
-    why_sentence:
-      "Consumer-review tone is steadier than investor chatter, which keeps the reading in a mixed band.",
-    trust_label: "High confidence",
-    window_start_utc: WINDOW,
-  },
-  {
-    id: "MARUTI",
-    symbol: "MARUTI",
-    name: "Maruti Suzuki India Ltd.",
-    sector: "Automotive",
-    score: 64.4,
-    verdict_label: "mixed",
-    why_sentence:
-      "Demand-recovery language is building, especially in vernacular threads, while institutional coverage stays measured.",
-    trust_label: "High confidence",
-    window_start_utc: WINDOW,
-  },
-  {
-    id: "TATAMOTORS",
-    symbol: "TATAMOTORS",
-    name: "Tata Motors Ltd.",
-    sector: "Automotive",
-    score: 52.0,
-    verdict_label: "mixed",
-    why_sentence:
-      "EV narrative is loud, but reality-check signals from product reviews are keeping the composite from running ahead.",
-    trust_label: "Moderate confidence — treat with caution",
-    window_start_utc: WINDOW,
-  },
-  {
-    id: "ITC",
-    symbol: "ITC",
-    name: "ITC Ltd.",
-    sector: "Consumer Goods",
-    score: 57.5,
-    verdict_label: "mixed",
-    why_sentence:
-      "FMCG commentary is orderly; there is no strong contagion or capitulation overlay in this window.",
-    trust_label: "High confidence",
-    window_start_utc: WINDOW,
-  },
-  {
-    id: "BHARTIARTL",
-    symbol: "BHARTIARTL",
-    name: "Bharti Airtel Ltd.",
-    sector: "Consumer Discretionary",
-    score: 66.1,
-    verdict_label: "building",
-    why_sentence:
-      "Tariff and subscriber narratives are reinforcing each other without a spike in coordinated posting.",
-    trust_label: "High confidence",
-    window_start_utc: WINDOW,
-  },
-  {
-    id: "SBIN",
-    symbol: "SBIN",
-    name: "State Bank of India",
-    sector: "Financial Services",
-    score: 44.7,
-    verdict_label: "mixed",
-    why_sentence:
-      "Public-sector bank chatter is cautious on asset quality, offsetting pockets of dividend optimism.",
-    trust_label: "High confidence",
-    window_start_utc: WINDOW,
-  },
-  {
-    id: "ADANIENT",
-    symbol: "ADANIENT",
-    name: "Adani Enterprises Ltd.",
-    sector: "Conglomerate",
-    score: 41.0,
-    verdict_label: "mixed",
-    why_sentence:
-      "Trust in the conversation is thin: similar wording is repeating across accounts, so the composite is discounted.",
-    trust_label: "Low confidence — possible manipulation detected",
-    window_start_utc: WINDOW,
-  },
-  {
-    id: "AAPL",
-    symbol: "AAPL",
-    name: "Apple Inc.",
-    sector: "Information Technology",
-    score: null,
-    verdict_label: "insufficient_data",
-    why_sentence: "Not enough overlapping coverage yet for a reliable reading on this name.",
-    trust_label: "Not enough data",
-    window_start_utc: WINDOW,
-  },
-];
+// ── per-ticker demo readings ──────────────────────────────────────────────────────────────
 
-const phylogenyBase: TickerAdvancedResponse["phylogeny_context"] = [
-  {
-    window_start_utc: "2026-06-04T19:40:24.121335Z",
-    mutation_type: "stable",
-    mutation_detail: { current_dominant: "rn", prior_dominant: "rn" },
-    composite_delta: 0.4,
-  },
-  {
-    window_start_utc: "2026-06-08T19:40:24.121335Z",
-    mutation_type: "dominant_index_shift",
-    mutation_detail: { current_dominant: "cirg", prior_dominant: "rn" },
-    composite_delta: -1.8,
-  },
-  {
-    window_start_utc: WINDOW,
-    mutation_type: "new_risk_flag",
-    mutation_detail: { flag: "consumer_reality_underpriced" },
-    composite_delta: 1.1,
-  },
-];
-
-function advanced(
-  symbol: string,
-  extras: Partial<TickerAdvancedResponse> & { indices?: IndicesBreakdown },
-): TickerAdvancedResponse {
-  const simple = tickerList.find((t) => t.symbol === symbol)!;
-  return {
-    symbol,
-    name: simple.name,
-    sector: simple.sector,
-    window_start_utc: WINDOW,
-    window_end_utc: WINDOW_END,
-    composite_score: simple.score,
-    dominant_index: "rn",
-    risk_flags: [],
-    aggregation_confidence: "high_trust",
-    indices: extras.indices ?? indices({}),
-    coordination: trust(32.5, "high_trust"),
-    phylogeny_context: phylogenyBase,
-    ...extras,
+type Flag = CoordinationMetric["confidence_flag"];
+interface DemoReading {
+  score: number | null; // narrative intensity
+  verdict: TickerSimpleItem["verdict_label"];
+  why: string;
+  flag: Flag;
+  coordination: number | null;
+  outlook: null | {
+    p: number;
+    expected: number;
+    typical: number;
+    dampened?: boolean;
+    posts: number;
   };
 }
 
-export const advancedBySymbol: Record<string, TickerAdvancedResponse> = {
-  INFY: advanced("INFY", {
-    dominant_index: "rn",
-    risk_flags: ["consumer_reality_underpriced"],
-    aggregation_confidence: "high_trust",
-    indices: indices({
-      rn: metric("Contagion Core", 1.34, true, null),
-      cirg: metric("Reality Check", 0.62, true, null),
-      cli: metric("Capitulation Signal", 0.29, true, null),
-      cassi: metric(
-        "Cross-Market Spillover",
-        null,
-        false,
-        "Needs 30+ days of overlapping multi-ticker data, currently at 12 days",
-      ),
-      vdi: metric("Language Divergence", 0.44, true, null),
-    }),
-    coordination: trust(28.0, "high_trust"),
-  }),
-  TCS: advanced("TCS", {
-    dominant_index: "vdi",
-    indices: indices({
-      rn: metric("Contagion Core", 1.18, true, null),
-      cirg: metric("Reality Check", 0.55, true, null),
-      cli: metric("Capitulation Signal", 0.22, true, null),
-      cassi: metric("Cross-Market Spillover", 0.66, true, null),
-      vdi: metric("Language Divergence", 0.71, true, null),
-    }),
-  }),
-  RELIANCE: advanced("RELIANCE", {
-    dominant_index: "cassi",
-    aggregation_confidence: "high_trust",
-    indices: indices({
-      rn: metric("Contagion Core", 1.41, true, null),
-      cirg: metric("Reality Check", 0.7, true, null),
-      cli: metric("Capitulation Signal", 0.18, true, null),
-      cassi: metric("Cross-Market Spillover", 0.83, true, null),
-      vdi: metric("Language Divergence", 0.61, true, null),
-    }),
-    coordination: trust(22.0, "high_trust"),
-  }),
-  TATASTEEL: advanced("TATASTEEL", {
-    dominant_index: "rn",
-    indices: indices({
-      rn: metric("Contagion Core", 1.27, true, null),
-      cirg: metric("Reality Check", 0.65, true, null),
-      cli: metric("Capitulation Signal", 0.29, true, null),
-      cassi: metric("Cross-Market Spillover", 0.74, true, null),
-      vdi: metric("Language Divergence", 0.55, true, null),
-    }),
-    coordination: trust(19.4, "high_trust"),
-  }),
-  HDFCBANK: advanced("HDFCBANK", {
-    dominant_index: "cli",
-    risk_flags: ["coordination_spike", "duplicate_cluster"],
-    aggregation_confidence: "low_trust",
-    indices: indices({
-      rn: metric("Contagion Core", 0.94, true, null),
-      cirg: metric("Reality Check", 0.41, true, null),
-      cli: metric("Capitulation Signal", 0.71, true, null),
-      cassi: metric("Cross-Market Spillover", 0.38, true, null),
-      vdi: metric("Language Divergence", 0.33, true, null),
-    }),
-    coordination: trust(72.4, "low_trust"),
-    phylogeny_context: [
-      {
-        window_start_utc: "2026-06-04T19:40:24.121335Z",
-        mutation_type: "stable",
-        mutation_detail: {},
-        composite_delta: -0.2,
-      },
-      {
-        window_start_utc: "2026-06-08T19:40:24.121335Z",
-        mutation_type: "composite_reversal",
-        mutation_detail: {},
-        composite_delta: -6.1,
-      },
-      {
-        window_start_utc: WINDOW,
-        mutation_type: "new_risk_flag",
-        mutation_detail: { flag: "coordination_spike" },
-        composite_delta: -3.4,
-      },
-    ],
-  }),
-  WIPRO: advanced("WIPRO", {
-    dominant_index: "cirg",
-    aggregation_confidence: "moderate",
-    indices: indices({
-      rn: metric("Contagion Core", 1.02, true, null),
-      cirg: metric("Reality Check", 0.58, true, null),
-      cli: metric("Capitulation Signal", 0.34, true, null),
-      cassi: metric(
-        "Cross-Market Spillover",
-        null,
-        false,
-        "Needs 30+ days of overlapping multi-ticker data, currently at 18 days",
-      ),
-      vdi: metric("Language Divergence", 0.49, true, null),
-    }),
-    coordination: trust(41.2, "moderate"),
-  }),
-  ONGC: advanced("ONGC", {
-    dominant_index: "cassi",
-    indices: indices({
-      rn: metric("Contagion Core", 1.22, true, null),
-      cirg: metric("Reality Check", 0.6, true, null),
-      cli: metric("Capitulation Signal", 0.21, true, null),
-      cassi: metric("Cross-Market Spillover", 0.79, true, null),
-      vdi: metric("Language Divergence", 0.4, true, null),
-    }),
-  }),
-  BAJFINANCE: advanced("BAJFINANCE", {
-    dominant_index: "cli",
-    aggregation_confidence: "moderate",
-    coordination: trust(46.8, "moderate"),
-  }),
-  HINDUNILVR: advanced("HINDUNILVR", {
-    dominant_index: "cirg",
-    indices: indices({
-      rn: metric("Contagion Core", 0.88, true, null),
-      cirg: metric("Reality Check", 0.73, true, null),
-      cli: metric("Capitulation Signal", 0.19, true, null),
-      cassi: metric("Cross-Market Spillover", 0.52, true, null),
-      vdi: metric("Language Divergence", 0.36, true, null),
-    }),
-  }),
-  MARUTI: advanced("MARUTI", {
-    dominant_index: "vdi",
-  }),
-  TATAMOTORS: advanced("TATAMOTORS", {
-    dominant_index: "cirg",
-    aggregation_confidence: "moderate",
-    risk_flags: ["consumer_reality_underpriced"],
-    coordination: trust(44.0, "moderate"),
-  }),
-  ITC: advanced("ITC", {
-    dominant_index: "cirg",
-  }),
-  BHARTIARTL: advanced("BHARTIARTL", {
-    dominant_index: "rn",
-  }),
-  SBIN: advanced("SBIN", {
-    dominant_index: "cli",
-  }),
-  ADANIENT: advanced("ADANIENT", {
-    dominant_index: "rn",
-    aggregation_confidence: "low_trust",
-    risk_flags: ["coordination_spike"],
-    coordination: trust(81.2, "low_trust"),
-  }),
-  AAPL: advanced("AAPL", {
-    composite_score: null,
-    dominant_index: "insufficient_data",
-    aggregation_confidence: "insufficient_data",
-    indices: {
-      rn: metric(
-        "Contagion Core",
-        null,
-        false,
-        "Needs 14+ days of overlapping source coverage, currently at 3 days",
-      ),
-      cirg: metric(
-        "Reality Check",
-        null,
-        false,
-        "Needs paired consumer-review and investor-thread coverage, currently unmatched",
-      ),
-      cli: metric(
-        "Capitulation Signal",
-        null,
-        false,
-        "Needs 200+ scored posts in-window, currently at 41 posts",
-      ),
-      cassi: metric(
-        "Cross-Market Spillover",
-        null,
-        false,
-        "Needs 30+ days of overlapping multi-ticker data, currently at 3 days",
-      ),
-      vdi: metric(
-        "Language Divergence",
-        null,
-        false,
-        "Needs bilingual vernacular and English samples in the same window",
-      ),
-    },
-    coordination: {
-      label: "Coordination risk",
-      coordination_score: 0,
-      confidence_flag: "insufficient_data",
-      available: false,
-      coverage_note: "Needs a larger unique-author set before a trust reading is published",
-    },
-    phylogeny_context: [],
-  }),
+const READINGS: Record<string, DemoReading> = {
+  RELIANCE: {
+    score: 71.4, verdict: "building", flag: "high_trust", coordination: 18.2,
+    why: "Retail and energy threads are reinforcing each other, and new accounts keep joining the conversation.",
+    outlook: { p: 0.534, expected: 1.62, typical: 1.18, posts: 214 },
+  },
+  TCS: {
+    score: 48.9, verdict: "mixed", flag: "high_trust", coordination: 12.5,
+    why: "Deal-win posts and margin worries are roughly balanced; no single story is spreading.",
+    outlook: { p: 0.487, expected: 0.94, typical: 1.05, posts: 96 },
+  },
+  INFY: {
+    score: 62.3, verdict: "building", flag: "high_trust", coordination: 21.0,
+    why: "Guidance commentary is spreading quickly through new voices rather than the usual regulars.",
+    outlook: { p: 0.561, expected: 1.48, typical: 1.31, posts: 133 },
+  },
+  HDFCBANK: {
+    score: 39.8, verdict: "fading", flag: "low_trust", coordination: 74.6,
+    why: "Near-identical deposit-growth posts from new accounts dominate the window, so the reading is discounted.",
+    outlook: { p: 0.472, expected: 1.21, typical: 1.02, dampened: true, posts: 188 },
+  },
+  ICICIBANK: {
+    score: 52.0, verdict: "mixed", flag: "moderate", coordination: 41.3,
+    why: "Attention is steady; a small cluster of repeated posts keeps this at moderate coordination risk.",
+    outlook: { p: 0.508, expected: 1.07, typical: 1.11, posts: 71 },
+  },
+  SBIN: {
+    score: null, verdict: "insufficient_data", flag: "insufficient_data", coordination: null,
+    why: "Not enough posts in this window for a reliable reading.",
+    outlook: null,
+  },
+  BHARTIARTL: {
+    score: null, verdict: "insufficient_data", flag: "insufficient_data", coordination: null,
+    why: "Not enough posts in this window for a reliable reading.",
+    outlook: null,
+  },
+  ITC: {
+    score: 44.1, verdict: "mixed", flag: "high_trust", coordination: 9.8,
+    why: "Quiet, mostly news-driven conversation with little disagreement.",
+    outlook: { p: 0.517, expected: 0.81, typical: 0.97, posts: 38 },
+  },
+  LT: {
+    score: 57.6, verdict: "building", flag: "high_trust", coordination: 15.1,
+    why: "Order-book posts are picking up and sentiment has shifted above its usual level.",
+    outlook: { p: 0.529, expected: 1.33, typical: 1.24, posts: 64 },
+  },
+  WIPRO: {
+    score: 35.2, verdict: "fading", flag: "high_trust", coordination: 11.7,
+    why: "Fewer people are posting and the remaining threads lean cautious.",
+    outlook: { p: 0.462, expected: 1.15, typical: 1.29, posts: 45 },
+  },
+  TATASTEEL: {
+    score: 66.0, verdict: "building", flag: "moderate", coordination: 38.9,
+    why: "Demand chatter is spreading fast; some repeated phrasing keeps coordination risk moderate.",
+    outlook: { p: 0.441, expected: 2.36, typical: 1.71, posts: 152 },
+  },
+  AAPL: {
+    score: null, verdict: "insufficient_data", flag: "insufficient_data", coordination: null,
+    why: "Not enough data yet for a reliable reading.",
+    outlook: { p: 0.527, expected: 1.73, typical: 1.26, posts: 32 },
+  },
+  TSLA: {
+    score: 78.5, verdict: "building", flag: "moderate", coordination: 44.0,
+    why: "Very high attention with sharp bull/bear disagreement; part of the volume repeats the same lines.",
+    outlook: { p: 0.493, expected: 3.42, typical: 2.88, dampened: true, posts: 402 },
+  },
+  NVDA: {
+    score: 69.9, verdict: "building", flag: "high_trust", coordination: 16.4,
+    why: "Attention is well above usual and sentiment has moved with it.",
+    outlook: { p: 0.548, expected: 2.21, typical: 2.05, posts: 311 },
+  },
+  MSFT: {
+    score: 46.7, verdict: "mixed", flag: "high_trust", coordination: 8.3,
+    why: "Steady, low-key conversation with no clear direction.",
+    outlook: { p: 0.503, expected: 0.98, typical: 1.12, posts: 87 },
+  },
+  AMZN: {
+    score: 50.3, verdict: "mixed", flag: "high_trust", coordination: 13.9,
+    why: "Mixed retail and cloud threads; neither is gaining ground.",
+    outlook: { p: 0.493, expected: 2.48, typical: 2.23, posts: 109 },
+  },
 };
 
+const TRUST_LABEL: Record<Flag, string> = {
+  high_trust: "High confidence",
+  moderate: "Moderate confidence - treat with caution",
+  low_trust: "Low confidence - possible manipulation detected",
+  insufficient_data: "Moderate confidence - treat with caution",
+};
+
+export const tickerList: TickerSimpleItem[] = TICKERS.filter((t) => READINGS[t.symbol].score !== null).map((t) => {
+  const r = READINGS[t.symbol];
+  return {
+    id: t.symbol, symbol: t.symbol, name: t.name, sector: t.sector, score: r.score, verdict_label: r.verdict,
+    why_sentence: r.why, trust_label: TRUST_LABEL[r.flag], window_start_utc: WINDOW,
+  };
+});
+
+/** /ticker/{s}/simple also answers for tracked tickers without a score. */
+export function simpleFor(symbol: string): TickerSimpleItem | null {
+  const t = TICKERS.find((x) => x.symbol === symbol);
+  if (!t) return null;
+  const r = READINGS[symbol];
+  return {
+    id: t.symbol, symbol: t.symbol, name: t.name, sector: t.sector, score: r.score, verdict_label: r.verdict,
+    why_sentence: r.why, trust_label: TRUST_LABEL[r.flag], window_start_utc: WINDOW,
+  };
+}
+
+// ── outlooks ──────────────────────────────────────────────────────────────────────────────
+
+function leanOf(p: number) {
+  const edge = Math.abs(p - 0.5);
+  return {
+    lean: (edge < 0.02 ? "neutral" : p > 0.5 ? "up" : "down") as TickerOutlookResponse["lean"],
+    lean_strength: (edge >= 0.05 ? "lean" : edge >= 0.02 ? "slight" : "none") as TickerOutlookResponse["lean_strength"],
+  };
+}
+
+function moveLabel(expected: number, typical: number): TickerOutlookResponse["move_label"] {
+  const r = expected / typical;
+  return r >= 1.2 ? "larger_than_usual" : r <= 0.83 ? "smaller_than_usual" : "typical";
+}
+
+function outlookFor(symbol: string, name: string): TickerOutlookResponse {
+  const o = READINGS[symbol].outlook;
+  const base = { symbol, name, disclaimer: DEMO_DISCLAIMER, as_of_day: AS_OF, model_version: "demo", generated_at: `${AS_OF}T12:00:00Z` };
+  if (!o) {
+    return {
+      ...base, available: false, coverage_note: "Needs about 2 weeks of post history before an outlook can be made.",
+      prob_up: null, lean: null, lean_strength: null, expected_move_pct: null, typical_move_pct: null, move_label: null,
+      direction_drivers: [], move_drivers: [], coordination_flag: null, coordination_dampened: false, posts_today: null,
+    };
+  }
+  const up = o.p >= 0.5;
+  return {
+    ...base, available: true, coverage_note: null, prob_up: o.p, ...leanOf(o.p),
+    expected_move_pct: o.expected, typical_move_pct: o.typical, move_label: moveLabel(o.expected, o.typical),
+    direction_drivers: [
+      { feature: "new_author_share", label: "New voices joining", kind: "narrative", contribution: up ? 0.094 : -0.081, pushes: up ? "up" : "down" },
+      { feature: "mean_sentiment", label: "Average sentiment", kind: "narrative", contribution: up ? 0.052 : -0.047, pushes: up ? "up" : "down" },
+      { feature: "ret_5", label: "5-day price momentum", kind: "price", contribution: up ? -0.031 : 0.026, pushes: up ? "down" : "up" },
+      { feature: "mkt_abs_ret", label: "Market-wide move today", kind: "price", contribution: 0.018, pushes: "up" },
+    ],
+    move_drivers: [
+      { feature: "volume_z", label: "Attention spike vs usual", kind: "narrative", contribution: 0.0024, pushes: "up" },
+      { feature: "abs_ret_22", label: "Volatility (1 month)", kind: "price", contribution: 0.0019, pushes: "up" },
+      { feature: "sentiment_z", label: "Sentiment shift vs usual", kind: "narrative", contribution: -0.0008, pushes: "down" },
+    ],
+    coordination_flag: o.dampened ? "low_trust" : READINGS[symbol].flag === "moderate" ? "moderate" : "high_trust",
+    coordination_dampened: Boolean(o.dampened), posts_today: o.posts,
+  };
+}
+
+export const demoOutlooks: TickerOutlookResponse[] = TICKERS.map((t) => outlookFor(t.symbol, t.name));
+
+export const demoOutlookModel: OutlookModelResponse = {
+  available: true,
+  version: MODEL_SNAPSHOT.version,
+  trained_at: MODEL_SNAPSHOT.trained_at,
+  training_data: { ...MODEL_SNAPSHOT.training_data },
+  track_record: JSON.parse(JSON.stringify(MODEL_SNAPSHOT.track_record)),
+  features: MODEL_SNAPSHOT.features.map((f) => ({ ...f })),
+  disclaimer:
+    "Demo mode: this track record is the committed model's real walk-forward result; per-ticker outlooks elsewhere in demo mode are illustrative. Statistical estimates, not investment advice.",
+};
+
+// ── advanced readings (login required in live mode) ──────────────────────────────────────
+
+function metric(label: string, score: number | null, note: string | null): IndexMetricValue {
+  return { label, score, available: score !== null, coverage_note: score === null ? note : null };
+}
+
+function indicesFor(symbol: string): IndicesBreakdown {
+  const r = READINGS[symbol];
+  const has = r.score !== null;
+  const seed = symbol.length / 10;
+  return {
+    rn: metric("Contagion", has ? +(0.8 + seed).toFixed(2) : null, "Needs 14+ days of first-mention history; currently at 3 days."),
+    cli: metric("Capitulation", has ? +(0.05 + seed / 4).toFixed(2) : null, "Needs 200+ scored posts in the window; currently at 41."),
+    vdi: metric("Language divergence", null, "Needs 20+ posts in each language (English and Hinglish) in the same window."),
+    cirg: metric("Reality check", null, "Only defined for consumer-facing companies with review coverage."),
+    cassi: metric("Cross-market spillover", has ? +(0.3 + seed / 2).toFixed(2) : null, "Needs 30+ complete days of multi-ticker sentiment."),
+  };
+}
+
+export const advancedBySymbol: Record<string, TickerAdvancedResponse> = Object.fromEntries(
+  TICKERS.map((t) => {
+    const r = READINGS[t.symbol];
+    const has = r.score !== null;
+    const value: TickerAdvancedResponse = {
+      symbol: t.symbol,
+      name: t.name,
+      sector: t.sector,
+      window_start_utc: WINDOW,
+      window_end_utc: WINDOW_END,
+      composite_score: r.score,
+      dominant_index: has ? "rn" : "insufficient_data",
+      risk_flags: r.flag === "low_trust" ? ["coordination_spike"] : [],
+      aggregation_confidence: r.flag,
+      indices: indicesFor(t.symbol),
+      coordination: {
+        label: "Coordination risk",
+        coordination_score: r.coordination ?? 0,
+        confidence_flag: r.flag,
+        available: r.coordination !== null,
+        coverage_note: r.coordination === null ? "Needs a larger set of distinct authors before a coordination reading is published." : null,
+      },
+      phylogeny_context: has
+        ? [
+            { window_start_utc: "2026-11-19T08:00:00Z", mutation_type: "stable", mutation_detail: {}, composite_delta: 1.4 },
+            { window_start_utc: "2026-11-19T14:00:00Z", mutation_type: "dominant_index_shift", mutation_detail: { from: "cassi", to: "rn" }, composite_delta: 6.2 },
+            ...(r.flag === "low_trust"
+              ? [{ window_start_utc: WINDOW, mutation_type: "new_risk_flag" as const, mutation_detail: { flag: "coordination_spike" }, composite_delta: -4.8 }]
+              : []),
+          ]
+        : [],
+    };
+    return [t.symbol, value];
+  }),
+);
+
+// ── reasoning traces ───────────────────────────────────────────────────────────────────────
+
 function traces(symbol: string): ReasoningTraceResponse {
+  const dup = READINGS[symbol].flag === "low_trust";
   return {
     symbol,
     window_start_utc: WINDOW,
-    total_traces: 6,
+    total_traces: dup ? 7 : 5,
     categories: {
       rn_onset: [
-        {
-          trace_id: 1042,
-          post_id: "tw_182937461928",
-          account_id: "trader_daily_in",
-          platform: "stocktwits",
-          weight: 0.85,
-          upvotes: 14,
-          text_preview: `${symbol} Q2 margins expanding faster than expected, digital cloud pipeline strong into next quarter...`,
-        },
-      ],
-      cassi_sentiment: [
-        {
-          trace_id: 1043,
-          post_id: "rd_99812",
-          account_id: "infra_watch",
-          platform: "reddit",
-          weight: 0.72,
-          upvotes: 41,
-          text_preview: "Domestic demand commentary is lining up with commodity threads rather than fighting them...",
-        },
-      ],
-      vdi_divergence: [
-        {
-          trace_id: 1044,
-          post_id: "tg_44190",
-          account_id: "market_se_baat",
-          platform: "telegram",
-          weight: 0.66,
-          upvotes: 9,
-          text_preview: "Regional chats are more optimistic than English coverage on the same name this week...",
-        },
+        { trace_id: 1, post_id: "st_1", account_id: "first_time_poster_88", platform: "stocktwits", weight: 0.82, upvotes: 14, text_preview: `First time posting about ${symbol}: the guidance call changed my mind on the next quarter.` },
+        { trace_id: 2, post_id: "st_2", account_id: "swing_notes", platform: "stocktwits", weight: 0.61, upvotes: 6, text_preview: `${symbol} keeps coming up in my feed today, watching the open.` },
       ],
       cli_capitulation: [
-        {
-          trace_id: 1045,
-          post_id: "rss_2211",
-          account_id: "desk_notes",
-          platform: "rss_news",
-          weight: 0.4,
-          upvotes: 0,
-          text_preview: "Management tone on the call was cautious; stop-loss language is picking up in comments...",
-        },
+        { trace_id: 3, post_id: "tg_1", account_id: "desk_chat", platform: "telegram", weight: 0.44, upvotes: 0, text_preview: `Sold my ${symbol} position this morning, done with this one for now.` },
       ],
-      duplicate_flag: [
-        {
-          trace_id: 1046,
-          post_id: "rd_dup_12",
-          account_id: "copy_cluster_a",
-          platform: "reddit",
-          weight: 0.31,
-          upvotes: 2,
-          text_preview: "Near-identical wording appearing across newly created accounts within minutes...",
-        },
+      cassi_sentiment: [
+        { trace_id: 4, post_id: "rss_1", account_id: "markets_wire", platform: "rss_news", weight: 0.37, upvotes: 0, text_preview: "Sector peers rallied after the overnight session; analysts flag read-across." },
       ],
       sentiment_variance_outlier: [
-        {
-          trace_id: 1047,
-          post_id: "gt_3301",
-          account_id: "search_pulse",
-          platform: "google_trends",
-          weight: 0.22,
-          upvotes: 0,
-          text_preview: "Search interest jumped without a matching news event in the same hour...",
-        },
+        { trace_id: 5, post_id: "gt_1", account_id: "search_interest", platform: "google_trends", weight: 0.21, upvotes: 0, text_preview: "Search interest rose without a matching news event in the same hour." },
       ],
+      ...(dup
+        ? {
+            duplicate_flag: [
+              { trace_id: 6, post_id: "st_d1", account_id: "acct_20261118a", platform: "stocktwits" as const, weight: 0.9, upvotes: 1, text_preview: `${symbol} deposit growth is about to surprise everyone. Load up before results.` },
+              { trace_id: 7, post_id: "st_d2", account_id: "acct_20261118b", platform: "stocktwits" as const, weight: 0.88, upvotes: 0, text_preview: `${symbol} deposit growth about to surprise everyone!! Load up before the results` },
+            ],
+          }
+        : {}),
     },
   };
 }
 
 export const reasoningBySymbol: Record<string, ReasoningTraceResponse> = Object.fromEntries(
-  tickerList.map((t) => [t.symbol, traces(t.symbol)]),
+  TICKERS.map((t) => [t.symbol, traces(t.symbol)]),
 );
 
 export function issueTokens(userId: string): AuthTokenResponse {
   return {
     access_token: `mock-access.${userId}.${Date.now()}`,
     refresh_token: `mock-refresh.${userId}.${Date.now()}`,
-    token_type: "Bearer",
+    token_type: "bearer",
     expires_in: 3600,
   };
 }
-
-
-// ── Next-day outlook (demo mode only; the live API serves model output) ──
-
-const DEMO_DISCLAIMER =
-  "Demo data. In live mode this is a statistical estimate from public social-media data and prices, with its historical accuracy shown alongside. Not investment advice.";
-
-function demoOutlook(
-  symbol: string,
-  name: string,
-  prob_up: number,
-  move: TickerOutlookResponse["move_label"],
-  expected: number,
-  typical: number,
-  dampened = false,
-): TickerOutlookResponse {
-  const edge = Math.abs(prob_up - 0.5);
-  return {
-    symbol,
-    name,
-    available: true,
-    coverage_note: null,
-    as_of_day: "2026-11-20",
-    prob_up,
-    lean: edge < 0.02 ? "neutral" : prob_up > 0.5 ? "up" : "down",
-    lean_strength: edge >= 0.05 ? "lean" : edge >= 0.02 ? "slight" : "none",
-    expected_move_pct: expected,
-    typical_move_pct: typical,
-    move_label: move,
-    direction_drivers: [
-      { feature: "sentiment_z", label: "Sentiment shift vs usual", kind: "narrative", contribution: prob_up > 0.5 ? 0.11 : -0.09, pushes: prob_up > 0.5 ? "up" : "down" },
-      { feature: "ret_5", label: "5-day price momentum", kind: "price", contribution: -0.04, pushes: "down" },
-      { feature: "new_author_share", label: "New voices joining", kind: "narrative", contribution: 0.03, pushes: "up" },
-    ],
-    move_drivers: [
-      { feature: "volume_z", label: "Attention spike vs usual", kind: "narrative", contribution: 0.0021, pushes: "up" },
-      { feature: "abs_ret_5", label: "Recent volatility (5 days)", kind: "price", contribution: 0.0018, pushes: "up" },
-    ],
-    coordination_flag: dampened ? "low_trust" : "high_trust",
-    coordination_dampened: dampened,
-    posts_today: 120,
-    model_version: "demo",
-    generated_at: "2026-11-20T12:00:00Z",
-    disclaimer: DEMO_DISCLAIMER,
-  };
-}
-
-export const demoOutlooks: TickerOutlookResponse[] = [
-  demoOutlook("INFY", "Infosys Ltd.", 0.56, "typical", 1.4, 1.3),
-  demoOutlook("TCS", "Tata Consultancy Services", 0.48, "smaller_than_usual", 0.9, 1.2),
-  demoOutlook("RELIANCE", "Reliance Industries", 0.53, "larger_than_usual", 2.1, 1.4, true),
-  demoOutlook("TATASTEEL", "Tata Steel", 0.44, "larger_than_usual", 2.8, 2.0),
-];
-
-export const demoOutlookModel: OutlookModelResponse = {
-  available: true,
-  version: "demo",
-  trained_at: "2026-11-20T00:00:00Z",
-  training_data: { source: "demo fixtures", sentiment_model: "demo", ticker_days: 0, first_day: "", last_day: "" },
-  track_record: {},
-  features: [],
-  disclaimer: DEMO_DISCLAIMER,
-};

@@ -1,5 +1,4 @@
 import type { ErrorResponse } from "@/types/api";
-import { mockRequest } from "@/mocks/handler";
 import { sessionStore } from "@/lib/session";
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "mock";
@@ -81,6 +80,8 @@ export async function apiFetch<T>(
   let body: unknown;
 
   if (isMock()) {
+    // Loaded only in demo mode, so live visitors never download the fixtures.
+    const { mockRequest } = await import("@/mocks/handler");
     const result = await mockRequest(method, urlPath, options.body, access);
     status = result.status;
     body = result.body;

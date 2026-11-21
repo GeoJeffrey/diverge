@@ -1,0 +1,97 @@
+/*
+ * Diverge design tokens. Two considered themes, not an inversion:
+ *  - "ink": deep ink with paper-white text; teal/coral glow slightly on dark.
+ *  - "paper": cool slate-paper (not cream) with darker teal/coral that pass AA on it.
+ * Accent rule: teal (--up) and coral (--down) are data colours only. Amber (--mark) is reserved
+ * for focus and selection, so no screen carries more than two accents in its content.
+ */
+@import "@fontsource-variable/inter/opsz.css";
+@import "@fontsource-variable/jetbrains-mono/index.css";
+
+:root,
+:root[data-theme="ink"] {
+  color-scheme: dark;
+  --bg: #0a0e14;
+  --raise: #0f141c;
+  --sunk: #070a0f;
+  --line: #1d2531;
+  --line-strong: #2c3644;
+  --edge: #5f6b7b; /* control borders, 3:1+ */
+  --text: #ece8e1;
+  --text-2: #b3bac4;
+  --text-3: #8590a0;
+  --up: #2dd4bf;
+  --up-soft: rgba(45, 212, 191, 0.14);
+  --down: #ff6b5a;
+  --down-soft: rgba(255, 107, 90, 0.14);
+  --mark: #f5b942;
+  --hatch: rgba(236, 232, 225, 0.11);
+  --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="ink"]) {
+    color-scheme: light;
+    --bg: #edf0f2;
+    --raise: #f8f9fa;
+    --sunk: #e3e7ea;
+    --line: #d3d9df;
+    --line-strong: #b4bdc6;
+    --edge: #7b8591; /* control borders, 3:1+ */
+    --text: #0b1017;
+    --text-2: #364150;
+    --text-3: #56616e;
+    --up: #0a7064;
+    --up-soft: rgba(10, 112, 100, 0.11);
+    --down: #b83a28;
+    --down-soft: rgba(184, 58, 40, 0.1);
+    --mark: #8f5400;
+    --hatch: rgba(11, 16, 23, 0.09);
+    --shadow-pop: 0 12px 32px rgba(11, 16, 23, 0.14);
+  }
+}
+
+:root[data-theme="paper"] {
+  color-scheme: light;
+  --bg: #edf0f2;
+  --raise: #f8f9fa;
+  --sunk: #e3e7ea;
+  --line: #d3d9df;
+  --line-strong: #b4bdc6;
+  --edge: #7b8591; /* control borders, 3:1+ */
+  --text: #0b1017;
+  --text-2: #364150;
+  --text-3: #56616e;
+  --up: #0a7064;
+  --up-soft: rgba(10, 112, 100, 0.11);
+  --down: #b83a28;
+  --down-soft: rgba(184, 58, 40, 0.1);
+  --mark: #8f5400;
+  --hatch: rgba(11, 16, 23, 0.09);
+  --shadow-pop: 0 12px 32px rgba(11, 16, 23, 0.14);
+}
+
+:root {
+  /* type */
+  --font-sans: "Inter Variable", "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace;
+  /* scale: minor third from a 15px body, display steps for the hero */
+  --fs-xs: 0.75rem;   /* 12 */
+  --fs-sm: 0.8125rem; /* 13 */
+  --fs-md: 0.9375rem; /* 15 body */
+  --fs-lg: 1.125rem;  /* 18 */
+  --fs-xl: 1.375rem;  /* 22 */
+  --fs-2xl: 1.75rem;  /* 28 */
+  --fs-3xl: 2.375rem; /* 38 */
+  --fs-4xl: 3.25rem;  /* 52 */
+  --fs-5xl: 4.5rem;   /* 72 */
+  /* space (4px base) */
+  --s1: 0.25rem; --s2: 0.5rem; --s3: 0.75rem; --s4: 1rem; --s5: 1.5rem;
+  --s6: 2rem; --s7: 3rem; --s8: 4.5rem; --s9: 7rem;
+  /* shape: radius encodes hierarchy, not decoration */
+  --r-control: 6px;
+  --r-panel: 2px;
+  --measure: 62ch;
+  --page: 1200px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
