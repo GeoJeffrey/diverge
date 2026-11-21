@@ -18,11 +18,12 @@ import sys
 from pathlib import Path
 
 # Ensure src/ is importable
-sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-# Default to tunnel if not set
+# Credentials are never hard-coded: DATABASE_URL must come from the environment
+# (e.g. `railway run python seed_production.py`).
 if not os.environ.get("DATABASE_URL"):
-    os.environ["DATABASE_URL"] = "postgresql://postgres:MuZQpoUCKVgvSrbfAiDeLPoVcKoeoeAG@127.0.0.1:65432/railway"
+    sys.exit("ERROR: set DATABASE_URL to the target PostgreSQL instance first.")
 
 from diverge.db.base import SessionLocal, engine
 from diverge.db.models import (
@@ -33,7 +34,7 @@ from diverge.db.models import (
 )
 from diverge.db.base import Base
 
-LOCAL_DB = Path(__file__).resolve().parent / "data" / "diverge_raw.db"
+LOCAL_DB = Path(__file__).resolve().parent.parent / "data" / "diverge_raw.db"
 
 # Tables to seed, in dependency order
 TABLES = [
