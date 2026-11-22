@@ -255,9 +255,10 @@ def render() -> Path:
             lines.append(_row([k, m["p50_ms"], m["p95_ms"], m["p99_ms"], m["throughput_rps"], f"{100 * m['error_rate']:.1f}%"]))
         lines.append("")
         e = list(api["endpoints"].values())
-        bullets.append(f"Served analytics through a JWT-secured FastAPI + PostgreSQL backend at p95 ≤ "
+        # The benchmark JSON doesn't record which database served it, so the bullet names only what was measured.
+        bullets.append(f"Served analytics through a JWT-secured FastAPI backend at p95 ≤ "
                        f"{max(x['p95_ms'] for x in e):.0f} ms and {min(x['throughput_rps'] for x in e):.0f}+ req/s "
-                       f"under {api['concurrency']} concurrent clients.")
+                       f"under {api['concurrency']} concurrent clients (single worker, laptop benchmark).")
 
     lines += ["## Resume bullets generated from these results", "",
               "Each bullet uses only the numbers above. Pick 3-4 and lead with the strongest.", ""]

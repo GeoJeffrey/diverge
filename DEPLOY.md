@@ -65,11 +65,24 @@ every row of the working store to Neon instead of only the last 3 days. From the
 `gh workflow run pipeline -f full_publish=true`.
 
 **60-day rule:** GitHub disables scheduled workflows in a public repository after 60 days without repository
-activity. If that happens, re-enable it from the Actions tab (pipeline → **Enable workflow**), or push any commit.
+activity. The `keepalive` workflow (`.github/workflows/keepalive.yml`) re-enables the pipeline through the Actions API
+on the 1st of every month, the approach used by the keepalive-workflow action. If the pipeline is ever disabled anyway,
+re-enable it from the Actions tab (pipeline → **Enable workflow**), or push any commit.
 
-**Sentiment model in the worker:** the fine-tuned FinBERT weights (`models/finbert-tweets`) are not in the
-repository, so the worker uses `ProsusAI/finbert`, cached between runs. To use the fine-tuned model, upload it to
-the Hugging Face Hub and set the `DIVERGE_SENTIMENT_MODEL` environment variable in the workflow to its model ID.
+**Sentiment model in the worker:** the fine-tuned FinBERT weights (`models/finbert-tweets`, created by the
+evaluation) are not in the repository, so by default the worker uses `ProsusAI/finbert`. To use the fine-tuned model,
+publish it to the Hugging Face Hub once and point the worker at it (PowerShell, from the project folder):
+
+```powershell
+.\.venv\Scripts\hf.exe auth login                                       # paste a Hugging Face "write" token at the prompt
+.\.venv\Scripts\hf.exe repos create diverge-finbert-tweets --repo-type model --no-private
+.\.venv\Scripts\hf.exe upload <your-hf-username>/diverge-finbert-tweets models/finbert-tweets .
+gh variable set DIVERGE_SENTIMENT_MODEL --body "<your-hf-username>/diverge-finbert-tweets"
+```
+
+The model repository must be **public** so the workflow can download it without a token (it is fine-tuned on a public
+dataset). `DIVERGE_SENTIMENT_MODEL` is a repository *variable*, not a secret; the workflow passes it to the pipeline
+and caches the model per name. Remove the variable to go back to `ProsusAI/finbert`.
 
 ## 3. Render (API)
 

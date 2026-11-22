@@ -66,11 +66,16 @@ class TestRealWorldRender(unittest.TestCase):
         self.assertIn("| False-alarm rate (random windows) | 5% |", md)
 
 
-class TestDirectionWording(unittest.TestCase):
+class TestReportWording(unittest.TestCase):
     def test_no_calibrated_claim_in_the_report_generator(self):
         import inspect
 
         self.assertNotIn("calibrated", inspect.getsource(run_all.render).lower())
+
+    def test_no_postgresql_claim_in_the_latency_bullet(self):
+        import inspect
+
+        self.assertNotIn("FastAPI + PostgreSQL backend at p95", inspect.getsource(run_all.render))
 
 
 if __name__ == "__main__":

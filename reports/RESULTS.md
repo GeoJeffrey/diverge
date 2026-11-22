@@ -128,7 +128,7 @@ Each bullet uses only the numbers above. Pick 3-4 and lead with the strongest.
 - Built a big-move early-warning model: days it flagged were followed by a large price move 2.26x more often than average (30% vs 13% base rate; price-only model 1.78x), out-of-sample over 5,055 ticker-days.
 - Found next-day volatility is 1.6x higher after social-attention shocks (95% CI 1.47-1.80).
 - Shipped an explainable next-day outlook (direction + expected move) with a public track record: 'bigger move than usual' calls were right 49% of the time vs a 39% base rate (1.26x lift) over 5,055 out-of-sample ticker-days.
-- Served analytics through a JWT-secured FastAPI + PostgreSQL backend at p95 ≤ 245 ms and 152+ req/s under 32 concurrent clients.
+- Served analytics through a JWT-secured FastAPI backend at p95 ≤ 245 ms and 152+ req/s under 32 concurrent clients (single worker, laptop benchmark).
 
 ## Not CV headline material
 
