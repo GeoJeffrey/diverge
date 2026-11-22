@@ -56,6 +56,11 @@ class TestLabelWindows(unittest.TestCase):
 
             res = label_windows.evaluate(out, Path(tmp))
             self.assertEqual(res["labelled_windows"], 30)
+            self.assertEqual(res["candidate_windows"], len(windows))  # recorded by label()
+            self.assertEqual(res["usable_labels"], 30)
+            strata = res["strata"]
+            self.assertEqual(strata["top_scored"]["labelled"] + strata["random"]["labelled"], 30)
+            self.assertEqual(strata["top_scored"]["unsure"] + strata["random"]["unsure"], 0)
             self.assertGreater(res["roc_auc"], 0.7)
             self.assertTrue((Path(tmp) / "real_world_validation.json").exists())
 
