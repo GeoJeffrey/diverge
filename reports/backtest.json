@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-21T17:24:01+00:00",
+  "generated_at": "2026-11-22T13:34:27+00:00",
   "environment": {
     "python": "3.11.9",
     "machine": "AMD64",
@@ -172,24 +172,25 @@
       1.802
     ]
   },
+  "importance_year": 2019,
   "permutation_importance_pct_mse": {
-    "abs_ret_22": 27.355,
-    "abs_ret_5": 3.52,
-    "mkt_abs_ret": 0.029,
-    "log_volume": 0.0,
-    "volume_z": 0.0,
-    "mean_sentiment": 0.0,
-    "bull_share": 0.0,
-    "sentiment_z": 0.0,
-    "disagreement": 0.0,
-    "new_author_share": 0.0,
-    "capitulation_share": 0.0,
-    "duplicate_share": 0.0,
-    "engagement": 0.0,
-    "divergence": 0.0,
-    "ret_5": -0.001,
-    "rn": -0.792,
-    "ret": -3.014,
-    "abs_ret": -3.551
+    "rn": 9.576,
+    "abs_ret_22": 6.248,
+    "log_volume": 2.463,
+    "abs_ret": 0.731,
+    "ret_5": 0.712,
+    "engagement": 0.351,
+    "ret": 0.206,
+    "mkt_abs_ret": 0.105,
+    "bull_share": 0.061,
+    "divergence": 0.06,
+    "capitulation_share": 0.055,
+    "new_author_share": 0.028,
+    "disagreement": 0.017,
+    "volume_z": 0.013,
+    "mean_sentiment": -0.017,
+    "duplicate_share": -0.121,
+    "sentiment_z": -0.197,
+    "abs_ret_5": -0.722
   }
 }
