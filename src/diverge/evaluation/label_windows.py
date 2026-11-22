@@ -129,6 +129,18 @@ def sample(scored: List[Dict[str, Any]], n: int = 100, seed: int = 11) -> List[D
     return chosen
 
 
+def candidates_path(labels: Path) -> Path:
+    return labels.with_name("candidates.json")
+
+
+def record_candidates(n: int, db_path: Path, labels: Path = LABELS_PATH) -> None:
+    """How many windows were available to sample from (only the labelling step knows this)."""
+    candidates_path(labels).write_text(json.dumps({
+        "candidate_windows": n, "source_db": Path(db_path).name,
+        "recorded_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }, indent=2), encoding="utf-8")
+
+
 def window_id(w: SimWindow) -> str:
     return f"{w.meta['ticker']}|{w.window_start.isoformat()}"
 
@@ -168,6 +180,7 @@ def label(db_path: Path, n: int, out: Path = LABELS_PATH) -> None:
     chosen = sample(score_windows(windows), n)
     done = _read_labels(out)
     out.parent.mkdir(parents=True, exist_ok=True)
+    record_candidates(len(windows), db_path, out)
     new_file = not out.exists()
     print(GUIDE)
     print(f"{len(windows)} candidate windows; labelling {len(chosen)} ({len(done)} already done).")
@@ -208,9 +221,18 @@ def evaluate(path: Path = LABELS_PATH, out_dir: Path = Path("reports")) -> Dict[
         return round(sum(xs) / len(xs), 4) if xs else None
 
     rnd = [(yi, fi) for yi, fi, r in zip(y, flagged, rows) if r["stratum"] == "random"]
+    everything = list(_read_labels(path).values())
+    cand = candidates_path(path)
     res: Dict[str, Any] = {
+        "candidate_windows": json.loads(cand.read_text(encoding="utf-8"))["candidate_windows"] if cand.exists() else None,
+        "usable_labels": len(rows),
+        "strata": {
+            s: {"labelled": sum(1 for r in rows if r["stratum"] == s),
+                "unsure": sum(1 for r in everything if r["stratum"] == s and r["label"] == "unsure")}
+            for s in ("top_scored", "random")
+        },
         "labelled_windows": len(rows),
-        "unsure_excluded": len(_read_labels(path)) - len(rows),
+        "unsure_excluded": len(everything) - len(rows),
         "coordinated_found": sum(y),
         "threshold": thr,
         "precision_when_flagged": share([yi for yi, fi in zip(y, flagged) if fi]),
@@ -221,7 +243,7 @@ def evaluate(path: Path = LABELS_PATH, out_dir: Path = Path("reports")) -> Dict[
             "coordinated_prevalence": share([yi for yi, _ in rnd]),
             "false_alarm_rate": share([fi for yi, fi in rnd if yi == 0]),
         },
-        "note": "Half the sample is the highest-scored windows, so recall is measured within the labelled sample only.",
+        "note": "The highest-scored windows are over-sampled, so recall is measured within the labelled sample only.",
     }
     if 0 < sum(y) < len(y):
         from sklearn.metrics import roc_auc_score

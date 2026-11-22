@@ -60,5 +60,5 @@ flowchart LR
 - Direction prediction for liquid large caps is near chance; the project does not claim tradeable alpha. The outlook shows its historical accuracy next to every call for this reason.
 - The outlook model is trained on US large caps and applied live to NSE and US tickers, so live accuracy can differ from the recorded track record.
 - Reddit's public JSON/RSS endpoints currently answer unauthenticated requests with HTTP 403/429, so live posts come mainly from StockTwits, Telegram, RSS news and Google Trends. The scraper respects these responses and does not work around them.
-- The tweet dataset ends on 2019-12-31, so the 2020 test days in the backtest (2-8 January) carry no social data, and the permutation importance in `reports/RESULTS.md`, computed on that final test year, scores 11 of the 12 social features at exactly 0, so it says nothing about them (the walk-forward comparison does).
+- The tweet dataset ends on 2019-12-31, so the 2020 test days in the backtest (2-8 January) carry no social data. Permutation importance is therefore measured on the last full test year (2019, recorded as `importance_year` in `reports/backtest.json`), not on those few days.
 - The API latency in `reports/RESULTS.md` was measured on a Windows laptop against the local SQLite store, not the production PostgreSQL database.

@@ -1,11 +1,23 @@
 {
-  "generated_at": "2026-11-21T22:57:02+00:00",
+  "generated_at": "2026-11-22T13:37:08+00:00",
   "environment": {
     "python": "3.11.9",
     "machine": "AMD64",
     "os": "Windows",
     "torch": "2.14.1+cu126",
     "cuda_device": "NVIDIA GeForce RTX 3060 Laptop GPU"
+  },
+  "candidate_windows": 4,
+  "usable_labels": 2,
+  "strata": {
+    "top_scored": {
+      "labelled": 2,
+      "unsure": 2
+    },
+    "random": {
+      "labelled": 0,
+      "unsure": 0
+    }
   },
   "labelled_windows": 2,
   "unsure_excluded": 2,
@@ -19,5 +31,5 @@
     "coordinated_prevalence": null,
     "false_alarm_rate": null
   },
-  "note": "Half the sample is the highest-scored windows, so recall is measured within the labelled sample only."
+  "note": "The highest-scored windows are over-sampled, so recall is measured within the labelled sample only."
 }

@@ -173,7 +173,9 @@ Social signals help the **next-day** volatility forecast significantly; at the *
 
 Direction accuracy is **at chance and below the always-up baseline**: the outlook's direction call is not a predictive edge, which is why its track record is shown next to every call. Its useful part is the expected move size.
 
-The tweet dataset ends on 2019-12-31, so the 2020 test days (2-8 January) have no social data. A first blind real-world check of the bot detector labelled 2 real 2-hour windows (2 more marked unsure and excluded). The model flagged none of them, so its real-world precision and false-alarm rate **can't be measured yet** (`n/a` in [reports/RESULTS.md](reports/RESULTS.md)). The check is repeated as the deployed worker collects more posts.
+The tweet dataset ends on 2019-12-31, so the 2020 test days (2-8 January) have no social data.
+
+**Real-world validation of the bot detector** (blind hand labels on live posts): **in progress (2 usable labels so far; target 100)**. Until there are enough labels its real-world precision is not reported; the check grows as the deployed worker collects more posts.
 
 ## Reproduce the evaluation
 
@@ -234,7 +236,7 @@ Interactive docs: `/docs` on any running API ([live](https://diverge-api.onrende
 ## Tests
 
 ```bash
-pytest -q     # 112 tests: index maths, Rn recovery, LSH vs brute force, backtest leakage checks, outlook train/serve parity, API
+pytest -q     # 115 tests: index maths, Rn recovery, LSH vs brute force, backtest leakage checks, outlook train/serve parity, API
 
 cd frontend
 npm run lint && npm run typecheck

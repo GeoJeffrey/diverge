@@ -36,9 +36,8 @@ def credible_gain(m) -> bool:
             and m["oos_r2_with_narrative"] > m["oos_r2_price_only"])
 
 
-# Price-only inputs of the backtest (mirrors outlook/features.PRICE_FEATURES; kept here so rendering
-# the report doesn't import pandas). Everything else in the permutation table is a social feature.
-_PRICE_FEATURES = {"abs_ret", "abs_ret_5", "abs_ret_22", "mkt_abs_ret", "ret", "ret_5"}
+MIN_REAL_LABELS = 20      # below this, the real-world section reports progress only
+TARGET_REAL_LABELS = 100  # label_windows samples up to --n 100 windows by default
 
 
 def _pct_or_na(value, why: str) -> str:
@@ -143,14 +142,8 @@ def render() -> Path:
         lines += ["", f"**Event study:** on top-decile attention-shock days ({ev['shock_days']:,}), next-day |return| averaged "
                   f"{ev['mean_next_day_abs_return_shock_pct']:.2f}% vs {ev['mean_next_day_abs_return_other_pct']:.2f}% otherwise: "
                   f"**{ev['volatility_ratio']:.2f}x** (bootstrap 95% CI {ev['ratio_95ci'][0]:.2f}-{ev['ratio_95ci'][1]:.2f}).", "",
-                  "Permutation importance (% MSE increase when shuffled, last test year): " +
+                  f"Permutation importance, {bt.get('importance_year', 'last test year')} (% MSE increase when shuffled): " +
                   ", ".join(f"{k} {val:.2f}" for k, val in list(bt["permutation_importance_pct_mse"].items())[:8]), ""]
-        social_pi = [val for k, val in bt["permutation_importance_pct_mse"].items() if k not in _PRICE_FEATURES]
-        zero = sum(1 for val in social_pi if val == 0)
-        if social_pi and zero >= 0.8 * len(social_pi):
-            lines += [f"Note: {zero} of {len(social_pi)} social features score exactly 0 here. This line is computed on the "
-                      f"final test year only ({max(v['linear']['test_years'])}), which in this dataset has no new social posts, "
-                      "so it can't show their importance; the walk-forward comparison above does.", ""]
         v5 = bt.get("volatility_5d")
         if v5:
             lines += ["**Week-ahead volatility** (mean |return| over the next 5 trading days)", "",
@@ -213,7 +206,8 @@ def render() -> Path:
                   ""]
         if lc["accuracy"] is not None and lc["accuracy"] - d["always_up_accuracy"] < 0.03:
             weak.append(f"Direction: 'lean' calls were {100 * lc['accuracy']:.1f}% accurate vs {100 * d['always_up_accuracy']:.1f}% "
-                        "for always guessing up. Mention as 'calibrated, with live track record', not as a headline.")
+                        "for always guessing up. Describe it as 'shown with its own track record and an always-up baseline', "
+                        "not as a headline.")
         if big["precision"] and big["precision"] > big["base_rate"]:
             bullets.append(
                 f"Shipped an explainable next-day outlook (direction + expected move) with a public track record: "
@@ -222,11 +216,22 @@ def render() -> Path:
                 f"over {t['test_days']:,} out-of-sample ticker-days.")
 
     real = _load("real_world_validation.json")
-    if real:
-        rs = real["random_sample"]
+    usable = (real or {}).get("usable_labels", (real or {}).get("labelled_windows", 0))
+    if real and usable < MIN_REAL_LABELS:
+        # Too few labels for any metric to mean anything: say so, no table, nothing for the CV.
         lines += ["## Real-world check of the bot detector (blind hand labels)", "",
-                  f"{real['labelled_windows']} real 2-hour windows from the live scrapers, labelled without seeing the model's score "
-                  f"(half highest-scored, half random; {real['unsure_excluded']} marked unsure and excluded).", "",
+                  f"Real-world validation: in progress ({usable} usable labels so far; target {TARGET_REAL_LABELS}).", ""]
+    elif real:
+        rs = real["random_sample"]
+        st = real.get("strata", {})
+        cand = real.get("candidate_windows")
+        lines += ["## Real-world check of the bot detector (blind hand labels)", "",
+                  (f"{cand:,} candidate 2-hour windows from the live scrapers" if cand is not None else
+                   "Real 2-hour windows from the live scrapers (candidate count not recorded)") +
+                  f"; {usable} labelled without seeing the model's score "
+                  f"({st.get('top_scored', {}).get('labelled', 'n/a')} from the highest-scored, "
+                  f"{st.get('random', {}).get('labelled', 'n/a')} at random), "
+                  f"{real['unsure_excluded']} marked unsure and excluded.", "",
                   _row(["Metric", "Value"]), _row(["---"] * 2),
                   _row(["Precision when flagged", _pct_or_na(real["precision_when_flagged"], f"no flagged windows among the labelled ones")
                         + (f" of {real['flagged_windows']} flagged windows" if real["precision_when_flagged"] is not None else "")]),

@@ -12,9 +12,9 @@ import pandas as pd
 from diverge.evaluation import backtest
 
 
-def synthetic_panel(planted: bool, seed: int = 0, years: int = 4):
+def synthetic_panel(planted: bool, seed: int = 0, years: int = 4, periods: int | None = None):
     rng = np.random.default_rng(seed)
-    days = pd.bdate_range("2015-01-01", periods=252 * years)
+    days = pd.bdate_range("2015-01-01", periods=periods or 252 * years)
     tickers = ["AAA", "BBB", "CCC"]
     prices, rows = {}, []
     mkt = np.cumsum(rng.normal(0, 0.008, len(days)))
@@ -87,3 +87,19 @@ class TestClaimGuard(unittest.TestCase):
         res = backtest.run_backtest(posts, prices, with_duplicates=False)["big_move_alerts"]
         self.assertGreater(res["with_narrative"]["lift"], res["price_only"]["lift"])
         self.assertGreater(res["with_narrative"]["lift"], 2.0)
+
+    def test_importance_year_skips_a_tiny_trailing_year(self):
+        # Full years 2016-2019 plus a 5-day stub in 2020, like the real tweet panel.
+        days = list(pd.bdate_range("2016-01-01", "2019-12-31")) + list(pd.bdate_range("2020-01-02", periods=5))
+        df = pd.DataFrame({"day": pd.to_datetime(days)})
+        self.assertEqual(backtest.importance_year(df), 2019)
+        full = pd.DataFrame({"day": pd.bdate_range("2016-01-01", "2019-12-31")})
+        self.assertEqual(backtest.importance_year(full), 2019)  # no stub: the last year is full
+
+    def test_backtest_records_and_uses_the_last_full_year(self):
+        # Ends 3 trading days into 2018: importance must be measured on 2017, and say so.
+        n = len(pd.bdate_range("2015-01-01", "2017-12-29")) + 3
+        posts, prices = synthetic_panel(planted=True, seed=3, periods=n)
+        res = backtest.run_backtest(posts, prices, with_duplicates=False)
+        self.assertEqual(res["importance_year"], 2017)
+        self.assertTrue(res["permutation_importance_pct_mse"])
