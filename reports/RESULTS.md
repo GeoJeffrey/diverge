@@ -67,7 +67,7 @@ Integrity feature extraction throughput: 8,600 posts/sec (single CPU core).
 
 **Event study:** on top-decile attention-shock days (635), next-day |return| averaged 1.94% vs 1.19% otherwise: **1.63x** (bootstrap 95% CI 1.47-1.80).
 
-Permutation importance (% MSE increase when shuffled, last test year): abs_ret_22 27.36, abs_ret_5 3.52, mkt_abs_ret 0.03, log_volume 0.00, volume_z 0.00, mean_sentiment 0.00, bull_share 0.00, sentiment_z 0.00
+Permutation importance, 2019 (% MSE increase when shuffled): rn 9.58, abs_ret_22 6.25, log_volume 2.46, abs_ret 0.73, ret_5 0.71, engagement 0.35, ret 0.21, mkt_abs_ret 0.10
 
 **Week-ahead volatility** (mean |return| over the next 5 trading days)
 
@@ -100,14 +100,7 @@ Walk-forward test 2016-01-04 to 2020-01-08 (5,055 ticker-days). Linear models, r
 
 ## Real-world check of the bot detector (blind hand labels)
 
-2 real 2-hour windows from the live scrapers, labelled without seeing the model's score (half highest-scored, half random; 2 marked unsure and excluded).
-
-| Metric | Value |
-| --- | --- |
-| Precision when flagged | n/a (no flagged windows among the labelled ones) |
-| ROC-AUC on labelled windows | n/a (one class only) |
-| False-alarm rate (random windows) | n/a (0 labelled random windows) |
-| Coordinated share of random windows | n/a (0 labelled random windows) |
+Real-world validation: in progress (2 usable labels so far; target 100).
 
 ## 5. API performance
 
@@ -141,5 +134,4 @@ Each bullet uses only the numbers above. Pick 3-4 and lead with the strongest.
 
 These results are real and stay in the report, but don't lead with them:
 
-- Direction: 'lean' calls were 52.6% accurate vs 54.0% for always guessing up. Mention as 'calibrated, with live track record', not as a headline.
-- Real-world bot check: too few flagged windows or precision below 70%; report it, don't headline it.
+- Direction: 'lean' calls were 52.6% accurate vs 54.0% for always guessing up. Describe it as 'shown with its own track record and an always-up baseline', not as a headline.

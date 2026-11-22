@@ -748,7 +748,7 @@
             "nullable": true,
             "minimum": 0,
             "maximum": 100,
-            "description": "Calibrated composite confidence score (0-100), or null if insufficient data",
+            "description": "Narrative intensity (0-100): how strong the conversation is, not its direction; null if insufficient data",
             "example": 54.6
           },
           "verdict_label": {
