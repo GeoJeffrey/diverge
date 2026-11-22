@@ -52,13 +52,15 @@ jobs:
           pip install -r requirements.txt
           pip install -e .
 
-      # Sentiment model weights: never change, so one fixed key, saved only on a miss.
+      # Sentiment model weights: one key per model, saved only on a miss. The model is the optional
+      # repository variable DIVERGE_SENTIMENT_MODEL (e.g. the fine-tuned FinBERT on the Hugging Face
+      # Hub); when it is unset the pipeline uses ProsusAI/finbert.
       - name: Restore Hugging Face model cache
         id: hf-cache
         uses: actions/cache/restore@v4
         with:
           path: ~/.cache/huggingface
-          key: diverge-hf-v1
+          key: diverge-hf-v1-${{ vars.DIVERGE_SENTIMENT_MODEL || 'ProsusAI-finbert' }}
 
       # The pipeline's working SQLite store (rolling history for Rn, z-scores, first-mention onsets).
       # Each run saves a new entry; the newest one is restored through the prefix.
@@ -72,6 +74,7 @@ jobs:
       - name: Run the pipeline
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIVERGE_SENTIMENT_MODEL: ${{ vars.DIVERGE_SENTIMENT_MODEL }}
         # --fail-on critical: a blocked scraper does not fail the run; features/outlook/publish do.
         run: python run_all.py --fail-on critical
 
@@ -93,4 +96,4 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: ~/.cache/huggingface
-          key: diverge-hf-v1
+          key: diverge-hf-v1-${{ vars.DIVERGE_SENTIMENT_MODEL || 'ProsusAI-finbert' }}
