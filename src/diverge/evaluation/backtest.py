@@ -286,11 +286,22 @@ def event_study(df: pd.DataFrame, n_boot: int = 2000, seed: int = 0) -> Dict:
     }
 
 
-def feature_importance(df: pd.DataFrame, narrative: List[str]) -> Dict[str, float]:
-    """Permutation importance (MSE increase, %) of each narrative feature on the final test year."""
+def importance_year(df: pd.DataFrame) -> int:
+    """The last FULL year of the panel: the latest year with at least half the median rows per year.
+
+    A trailing stub year (e.g. the 2020 days left after the tweet data ends) is too small to measure
+    importance on and has no social posts, so every social feature would score 0 there.
+    """
+    counts = df["day"].dt.year.value_counts()
+    return int(max(y for y, n in counts.items() if n >= 0.5 * counts.median()))
+
+
+def feature_importance(df: pd.DataFrame, narrative: List[str], year: Optional[int] = None) -> Dict[str, float]:
+    """Permutation importance (MSE increase, %) of each feature on the last full test year,
+    with the model trained on all earlier years."""
     from sklearn.inspection import permutation_importance
 
-    last = df["day"].dt.year.max()
+    last = importance_year(df) if year is None else year
     tr, te = df[df["day"].dt.year < last], df[df["day"].dt.year == last]
     feats = PRICE_FEATURES + narrative
     m = _model("gbm", "reg").fit(tr[feats], tr["y_abs_next"])
@@ -327,7 +338,8 @@ def run_backtest(posts: pd.DataFrame, prices: pd.DataFrame, with_duplicates: boo
         "big_move_alerts": big_move_alerts(df, narrative),
         "direction": evaluate_direction(df, narrative),
         "attention_shock_event_study": event_study(df),
-        "permutation_importance_pct_mse": feature_importance(df, narrative),
+        "importance_year": importance_year(df),
+        "permutation_importance_pct_mse": feature_importance(df, narrative, importance_year(df)),
     }
 
 
