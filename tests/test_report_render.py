@@ -46,5 +46,18 @@ class TestRealWorldRender(unittest.TestCase):
         self.assertIn("| False-alarm rate (random windows) | 5% |", md)
 
 
+class TestReportWording(unittest.TestCase):
+    def test_price_feature_list_matches_the_model(self):
+        from diverge.outlook.features import PRICE_FEATURES
+
+        self.assertEqual(run_all._PRICE_FEATURES, set(PRICE_FEATURES))
+
+    def test_no_postgresql_claim_in_the_latency_bullet(self):
+        import inspect
+
+        src = inspect.getsource(run_all.render)
+        self.assertNotIn("FastAPI + PostgreSQL backend at p95", src)
+
+
 if __name__ == "__main__":
     unittest.main()

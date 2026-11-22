@@ -234,7 +234,7 @@ Interactive docs: `/docs` on any running API ([live](https://diverge-api.onrende
 ## Tests
 
 ```bash
-pytest -q     # 110 tests: index maths, Rn recovery, LSH vs brute force, backtest leakage checks, outlook train/serve parity, API
+pytest -q     # 112 tests: index maths, Rn recovery, LSH vs brute force, backtest leakage checks, outlook train/serve parity, API
 
 cd frontend
 npm run lint && npm run typecheck

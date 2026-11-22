@@ -36,6 +36,11 @@ def credible_gain(m) -> bool:
             and m["oos_r2_with_narrative"] > m["oos_r2_price_only"])
 
 
+# Price-only inputs of the backtest (mirrors outlook/features.PRICE_FEATURES; kept here so rendering
+# the report doesn't import pandas). Everything else in the permutation table is a social feature.
+_PRICE_FEATURES = {"abs_ret", "abs_ret_5", "abs_ret_22", "mkt_abs_ret", "ret", "ret_5"}
+
+
 def _pct_or_na(value, why: str) -> str:
     """A metric that could not be computed is reported as n/a with the reason, never as 0%."""
     return f"n/a ({why})" if value is None else f"{100 * value:.0f}%"
@@ -140,6 +145,12 @@ def render() -> Path:
                   f"**{ev['volatility_ratio']:.2f}x** (bootstrap 95% CI {ev['ratio_95ci'][0]:.2f}-{ev['ratio_95ci'][1]:.2f}).", "",
                   "Permutation importance (% MSE increase when shuffled, last test year): " +
                   ", ".join(f"{k} {val:.2f}" for k, val in list(bt["permutation_importance_pct_mse"].items())[:8]), ""]
+        social_pi = [val for k, val in bt["permutation_importance_pct_mse"].items() if k not in _PRICE_FEATURES]
+        zero = sum(1 for val in social_pi if val == 0)
+        if social_pi and zero >= 0.8 * len(social_pi):
+            lines += [f"Note: {zero} of {len(social_pi)} social features score exactly 0 here. This line is computed on the "
+                      f"final test year only ({max(v['linear']['test_years'])}), which in this dataset has no new social posts, "
+                      "so it can't show their importance; the walk-forward comparison above does.", ""]
         v5 = bt.get("volatility_5d")
         if v5:
             lines += ["**Week-ahead volatility** (mean |return| over the next 5 trading days)", "",
@@ -239,9 +250,10 @@ def render() -> Path:
             lines.append(_row([k, m["p50_ms"], m["p95_ms"], m["p99_ms"], m["throughput_rps"], f"{100 * m['error_rate']:.1f}%"]))
         lines.append("")
         e = list(api["endpoints"].values())
-        bullets.append(f"Served analytics through a JWT-secured FastAPI + PostgreSQL backend at p95 ≤ "
+        # The benchmark JSON doesn't record which database served it, so the bullet names only what was measured.
+        bullets.append(f"Served analytics through a JWT-secured FastAPI backend at p95 ≤ "
                        f"{max(x['p95_ms'] for x in e):.0f} ms and {min(x['throughput_rps'] for x in e):.0f}+ req/s "
-                       f"under {api['concurrency']} concurrent clients.")
+                       f"under {api['concurrency']} concurrent clients (single worker, laptop benchmark).")
 
     lines += ["## Resume bullets generated from these results", "",
               "Each bullet uses only the numbers above. Pick 3-4 and lead with the strongest.", ""]
